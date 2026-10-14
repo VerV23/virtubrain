@@ -1,4 +1,4 @@
-/* Shared UI behaviours for every page (local nav, galleries, tabs, FAQ, count-ups, line reveals,
+/* Shared UI behaviors for every page (local nav, galleries, tabs, FAQ, count-ups, line reveals,
    scroll-linked scale, steps, ink reading effect, copy buttons). Originally built for the inner pages.
    Every enhancement is progressive: the HTML is complete and readable without it, and
    prefers-reduced-motion turns the motion off while keeping the interactions. */
@@ -21,10 +21,33 @@ export function onFrame(fn: () => void) {
   fn();
 }
 
-/* ---------- sticky local nav: highlights the section in view ---------- */
+/* the skin (dark | light | navy) of whatever is painted at a viewport point, ignoring the given chrome */
+const WORLD_SKIN: Record<string, string> = {
+  "w-void": "dark", "w-ink": "dark", "w-teal": "dark", "w-fog": "light", "w-light": "light", "w-paper": "light", "w-navy": "navy",
+};
+const WORLD_SEL = ".w-void, .w-ink, .w-teal, .w-fog, .w-light, .w-paper, .w-navy, [data-skin]";
+export function skinAt(x: number, y: number, ignore: Element[] = []): string {
+  for (const el of document.elementsFromPoint(x, y)) {
+    if (ignore.some((g) => g.contains(el))) continue;
+    const w = el.closest<HTMLElement>(WORLD_SEL);
+    if (w && !ignore.includes(w)) return w.dataset.skin || WORLD_SKIN[[...w.classList].find((c) => c in WORLD_SKIN) || ""] || "dark";
+  }
+  return "dark";
+}
+
+/* ---------- sticky local nav: highlights the section in view ----------
+   <nav class="lnav" data-lnav data-skin-follow> also takes the skin of the section beneath it, so the
+   global header (which reads the element under itself) and the local bar always match. */
 export function initLocalNav() {
   const nav = document.querySelector<HTMLElement>("[data-lnav]");
   if (!nav) return;
+  if (nav.hasAttribute("data-skin-follow")) {
+    const chrome = [nav, ...document.querySelectorAll(".site-nav")];
+    onFrame(() => {
+      const next = skinAt(innerWidth / 2, nav.getBoundingClientRect().bottom + 2, chrome);
+      if (nav.dataset.skin !== next) nav.dataset.skin = next;
+    });
+  }
   const list = nav.querySelector<HTMLElement>(".lnav-links")!;
   const links = [...list.querySelectorAll<HTMLAnchorElement>('a[href^="#"]')];
   const secs = links.map((a) => document.getElementById(decodeURIComponent(a.hash.slice(1))));
@@ -137,7 +160,7 @@ export function initTabs(root: ParentNode = document) {
         const t = tabs[i];
         seg.scrollTo({ left: t.offsetLeft - (seg.clientWidth - t.offsetWidth) / 2, behavior: reduce() ? "auto" : "smooth" });
       }
-      box.dispatchEvent(new CustomEvent("tabs:change", { detail: { index: i, id: tabs[i].dataset.key || tabs[i].id } }));
+      box.dispatchEvent(new CustomEvent("tabs:change", { detail: { index: i, id: tabs[i].dataset.key || tabs[i].id, tab: tabs[i] } }));
     };
     tabs.forEach((t, i) => {
       t.addEventListener("click", () => select(i));
@@ -170,43 +193,65 @@ export function initFaq(root: ParentNode = document) {
   });
 }
 
-/* ---------- count-up numerals (screen readers get the final value up front) ---------- */
+/* ---------- count-up numerals ----------
+   The real number stays in the HTML and the DOM until the numeral is about to scroll into view, so
+   captures, reader modes and crawlers always read it. Just below the fold it is zeroed, then it counts
+   up once on screen; if the reader turns back first, the real value is restored. Screen readers get
+   the final value up front from an sr-only copy. Numbers with a comma keep it narrow (<span class="sep">). */
 export function initCounts(root: ParentNode = document) {
   const els = [...root.querySelectorAll<HTMLElement>("[data-count]")];
   if (!els.length) return;
   const fmt = new Intl.NumberFormat("en-US");
+  const show = (el: HTMLElement, v: number) => { el.innerHTML = fmt.format(v).replace(/,/g, '<span class="sep">,</span>'); };
   const run = (el: HTMLElement) => {
     const to = Number(el.dataset.count);
     const dur = Number(el.dataset.dur || 850);
     const t0 = performance.now();
     const step = (t: number) => {
       const k = clamp((t - t0) / dur);
-      const v = k >= 1 ? to : Math.round(to * (1 - Math.pow(2, -10 * k)));
-      // digits only, so building markup is safe; the comma gets proportional spacing
-      el.innerHTML = fmt.format(v).replace(/,/g, '<span class="sep">,</span>');
+      show(el, k >= 1 ? to : Math.round(to * (1 - Math.pow(2, -10 * k))));
       if (k < 1) requestAnimationFrame(step);
     };
     requestAnimationFrame(step);
   };
-  const io = new IntersectionObserver((es) => es.forEach((e) => {
-    if (e.isIntersecting) { io.unobserve(e.target); run(e.target as HTMLElement); }
-  }), { threshold: 0.3 });
+  type St = { el: HTMLElement; to: number; state: "final" | "zero" | "done" };
+  const items: St[] = [];
   els.forEach((el) => {
     const sr = document.createElement("span");
     sr.className = "sr-only";
     sr.textContent = el.textContent;
     el.before(sr);
     el.setAttribute("aria-hidden", "true");
-    if (reduce()) return;
     const r = el.getBoundingClientRect();
-    if (r.top < innerHeight && r.bottom > 0) return; // already on screen at load: leave the final value
-    el.textContent = "0";
-    io.observe(el);
+    // on screen at load, or reduced motion: the real value simply stays
+    if (reduce() || (r.top < innerHeight && r.bottom > 0)) return;
+    items.push({ el, to: Number(el.dataset.count), state: "final" });
+  });
+  if (!items.length) return;
+  onFrame(() => {
+    const vh = innerHeight;
+    for (const it of items) {
+      if (it.state === "done") continue;
+      const r = it.el.getBoundingClientRect();
+      if (r.top < vh * 0.88 && r.bottom > 0) { it.state = "done"; run(it.el); }
+      else if (r.top >= vh && r.top < vh * 1.35) { if (it.state !== "zero") { it.state = "zero"; show(it.el, 0); } }
+      else if (it.state === "zero") { it.state = "final"; show(it.el, it.to); }
+    }
   });
 }
 
-/* ---------- headline line reveals and one-shot section reveals ---------- */
+/* ---------- headline line reveals and one-shot section reveals ----------
+   Split-line headlines are written as <span class="ln"><span>…</span></span> per line. A space is kept
+   between lines so the accessible name, copy-paste and reader modes read "one process. Prove it",
+   never "process.Prove". */
+export function spaceLines(root: ParentNode = document) {
+  root.querySelectorAll<HTMLElement>(".ln").forEach((ln) => {
+    const prev = ln.previousSibling;
+    if (prev && prev.nodeType === 1 && (prev as Element).classList.contains("ln")) ln.before(document.createTextNode(" "));
+  });
+}
 export function initLines(root: ParentNode = document) {
+  spaceLines(root);
   const els = [...root.querySelectorAll<HTMLElement>(".lines, [data-reveal]")];
   if (!els.length || reduce()) return;
   document.documentElement.classList.add("ln-armed");
@@ -234,10 +279,10 @@ export function initScrub(root: ParentNode = document) {
     const vh = innerHeight;
     live.forEach((el) => {
       const r = el.getBoundingClientRect();
-      // 0 as the element enters from the bottom, 1 once its centre reaches the middle of the screen
+      // 0 as the element enters from the bottom, 1 once its center reaches the middle of the screen
       const p = clamp((vh - r.top) / (vh / 2 + r.height / 2));
       const amt = parseFloat(el.dataset.zoom || "0.1");
-      el.style.setProperty("--z", (1 + amt * (1 - easeOut(p))).toFixed(4));
+      el.style.setProperty("--zoom", (1 + amt * (1 - easeOut(p))).toFixed(4));
     });
     // the hero frame opens to full bleed over the first ~45% of a screen of scrolling
     const e = easeOut(clamp(scrollY / (vh * 0.45))).toFixed(4);

@@ -1,11 +1,10 @@
-/* The VirtuBrain app shell: toolbar (views, search, lens), the active view, status bar, toasts. */
+/* The VirtuBrain app shell: toolbar (views, search), a first-run strip, the active view, status bar, toasts. */
 import { render } from "preact";
-import { useEffect, useRef } from "preact/hooks";
-import { route, go, hrefFor, VIEWS, tax, currentProc, toast, announce, loadData, keysOn, setKeys, type View } from "./state";
+import { useEffect, useRef, useState } from "preact/hooks";
+import { route, go, hrefFor, VIEWS, tax, currentProc, toast, announce, loadData, keysOn, setKeys, focusHeading, pref, type View } from "./state";
 import { Explore, listKey, listActive, mPane, activeOptionId } from "./explore";
 import { PainView } from "./pain";
-import { XRay, pickOpen, pickQ, pickActive, pickItems, pickerKey, choose } from "./xray";
-import { LensBar } from "./controls";
+import { XRay, pickOpen, pickQ, pickActive, pickItems, pickRes, pickerKey, choose } from "./xray";
 import { Icon, FnIcon, Still, isTyping } from "./ui";
 
 loadData();
@@ -25,7 +24,7 @@ function App() {
       if (isTyping(e) || (e.target as HTMLElement)?.closest?.("dialog")) return;
       if (e.key === "?") { e.preventDefault(); dlg.current?.showModal(); return; }
       const v = VIEWS.find((x) => x.key === e.key.toLowerCase());
-      if (v && !(e.target as HTMLElement)?.closest?.(".card")) { e.preventDefault(); switchView(v.id); }
+      if (v && !(e.target as HTMLElement)?.closest?.(".card")) { e.preventDefault(); switchView(v.id, { focus: true }); }
     };
     addEventListener("keydown", onKey);
     return () => removeEventListener("keydown", onKey);
@@ -40,6 +39,7 @@ function App() {
   return (
     <div class="vb" data-view={r.view}>
       <Toolbar />
+      <Intro />
       <div class="vb-body" id="vb-panel" role="tabpanel" aria-labelledby={`tab-${r.view}`}>
         {r.view === "explore" ? <Explore /> : r.view === "pain" ? <PainView /> : <XRay />}
       </div>
@@ -51,20 +51,36 @@ function App() {
   );
 }
 
-function switchView(view: View) {
+function switchView(view: View, o: { focus?: boolean } = {}) {
   const r = route.value; if (view === r.view) return;
   const cur = currentProc.value;
   if (view === "xray" && r.view === "explore" && cur) go({ view, fn: cur.fn.functionId, p: cur.proc.id });
   else go({ view });
   pickOpen.value = false; mPane.value = null;
+  if (o.focus) focusHeading();
+}
+
+const introSeen = pref("vb-intro-seen", false);
+function Intro() {
+  if (introSeen.value) return null;
+  return (
+    <aside class="intro" aria-label="How the app works">
+      <ul class="intro-list">
+        <li><b>Explore</b> Open any of 142 processes and read it for your industry and country, down to its tasks and steps.</li>
+        <li><b>Pain points</b> Browse 362 illustrative failure points, each tied to the task or step where it shows up.</li>
+        <li><b>X-ray</b> Sort a process's steps by who should run them: an AI agent, an AI agent with a person approving, or people.</li>
+      </ul>
+      <p class="intro-short">Explore 142 processes, browse 362 illustrative pain points, or X-ray a process to sort its steps by who should run them.</p>
+      <button type="button" class="b b-ghost b-sm intro-x" onClick={() => { introSeen.value = true; focusHeading(); }}>Got it</button>
+    </aside>
+  );
 }
 
 function Toolbar() {
   const r = route.value;
-  const tabsRef = useRef<HTMLDivElement>(null);
   return (
     <div class="tb">
-      <div class="tabs" role="tablist" aria-label="App views" ref={tabsRef}
+      <div class="tabs" role="tablist" aria-label="App views"
         onKeyDown={(e) => {
           const i = VIEWS.findIndex((v) => v.id === r.view);
           const d = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
@@ -80,7 +96,6 @@ function Toolbar() {
         ))}
       </div>
       <Search />
-      {r.view === "explore" && <LensBar />}
     </div>
   );
 }
@@ -92,17 +107,30 @@ const TabGlyph = ({ v }: { v: View }) => (
   </svg>
 );
 
+/** The toolbar search. It keeps its own text so typing stays instant; the URL (and the filtering it drives)
+    follows after a short pause: 120 ms for the pain-point library, 60 ms for the process list. */
 function Search() {
   const r = route.value; const view = r.view; const idx = tax.value.state === "ready" ? tax.value.data.idx : null;
-  const value = view === "explore" ? r.q : view === "pain" ? r.pq : pickQ.value;
-  const label = view === "explore" ? "Search all 142 processes" : view === "pain" ? "Search 362 pain points" : "Find a process to X-ray";
-  const placeholder = view === "explore" ? "Search processes, activities, tasks" : view === "pain" ? "Search pain points" : "Find a process to X-ray";
+  const routeValue = view === "explore" ? r.q : view === "pain" ? r.pq : pickQ.value;
+  const [text, setText] = useState(routeValue);
+  const pending = useRef<number>(0); const lastSent = useRef(routeValue);
+  // follow the URL when it changes from elsewhere (Esc, clear filters, Back/Forward, view switch)
+  useEffect(() => { if (routeValue !== lastSent.current) { clearTimeout(pending.current); setText(routeValue); lastSent.current = routeValue; } }, [routeValue, view]);
+  const label = view === "explore" ? "Search all 142 processes" : view === "pain" ? "Search 362 illustrative pain points" : "Find a process to X-ray";
+  const placeholder = view === "explore" ? "Search processes, or try AP, P2P, month-end" : view === "pain" ? "Search pain points" : "Find a process to X-ray";
   const input = useRef<HTMLInputElement>(null);
-  const set = (v: string) => {
+  const commit = (v: string) => {
+    lastSent.current = v;
     if (view === "explore") { listActive.value = null; mPane.value = v.trim() ? "list" : null; go({ q: v }, { replace: true }); }
     else if (view === "pain") go({ pq: v }, { replace: true });
-    else { pickQ.value = v; pickOpen.value = true; pickActive.value = 0; }
   };
+  const set = (v: string, now = false) => {
+    setText(v);
+    if (view === "xray") { pickQ.value = v; lastSent.current = v; pickOpen.value = true; pickActive.value = 0; return; }
+    clearTimeout(pending.current);
+    if (now) commit(v); else pending.current = window.setTimeout(() => commit(v), view === "pain" ? 120 : 60);
+  };
+  const flush = () => { if (text !== lastSent.current && view !== "xray") { clearTimeout(pending.current); commit(text); } };
   const combo = view !== "pain";
   const expanded = view === "explore" ? true : pickOpen.value;
   return (
@@ -110,21 +138,21 @@ function Search() {
       <Icon name="search" class="tb-search-ico" />
       <label for="vb-search" class="sr-only">{label}</label>
       <input ref={input} id="vb-search" type="text" inputMode="search" enterKeyHint={view === "pain" ? "search" : "go"} autocomplete="off" autocapitalize="off" spellcheck={false}
-        placeholder={placeholder} value={value}
+        placeholder={placeholder} value={text}
         role={combo ? "combobox" : undefined} aria-autocomplete={combo ? "list" : undefined} aria-expanded={combo ? expanded : undefined}
         aria-controls={combo ? (view === "explore" ? "vb-proclist" : "xr-picklist") : undefined}
         aria-activedescendant={view === "explore" ? activeOptionId() : view === "xray" && pickOpen.value && pickItems.value.length ? `pk-${pickActive.value}` : undefined}
         onInput={(e) => set((e.currentTarget as HTMLInputElement).value)}
         onFocus={() => { if (view === "xray") { pickOpen.value = true; } }}
-        onBlur={() => { if (view === "xray") setTimeout(() => { if (document.activeElement !== input.current) pickOpen.value = false; }, 120); }}
+        onBlur={() => { flush(); if (view === "xray") setTimeout(() => { if (document.activeElement !== input.current) pickOpen.value = false; }, 120); }}
         onKeyDown={(e) => {
-          if (view === "explore") { if (listKey(e)) return; }
+          if (view === "explore") { if (e.key === "Enter" || e.key.startsWith("Arrow")) flush(); if (listKey(e)) return; }
           else if (view === "xray") { if (pickerKey(e)) return; }
-          if (e.key === "Escape") { if (value) set(""); else input.current?.blur(); e.preventDefault(); }
-          if (e.key === "Enter" && view === "pain") { (document.querySelector(".rec-link") as HTMLElement | null)?.focus(); e.preventDefault(); }
+          if (e.key === "Escape") { if (text) set("", true); else input.current?.blur(); e.preventDefault(); }
+          if (e.key === "Enter" && view === "pain") { flush(); requestAnimationFrame(() => (document.querySelector(".rec-link") as HTMLElement | null)?.focus()); e.preventDefault(); }
         }} />
-      {value ? (
-        <button type="button" class="tb-clear" aria-label="Clear search" onMouseDown={(e) => e.preventDefault()} onClick={() => { set(""); input.current?.focus(); }}><Icon name="close" /></button>
+      {text ? (
+        <button type="button" class="tb-clear" aria-label="Clear search" onMouseDown={(e) => e.preventDefault()} onClick={() => { set("", true); input.current?.focus(); }}><Icon name="close" /></button>
       ) : <kbd class="tb-kbd" aria-hidden="true">/</kbd>}
       {view === "xray" && pickOpen.value && idx && <Picker />}
     </div>
@@ -132,11 +160,11 @@ function Search() {
 }
 
 function Picker() {
-  const items = pickItems.value; const q = pickQ.value.trim(); const a = pickActive.value;
+  const items = pickItems.value; const corrected = pickRes.value.corrected; const q = pickQ.value.trim(); const a = pickActive.value;
   useEffect(() => { document.getElementById(`pk-${a}`)?.scrollIntoView({ block: "nearest" }); }, [a]);
   return (
     <div class="pick" onMouseDown={(e) => e.preventDefault()}>
-      <p class="pick-h" aria-live="polite">{q ? (items.length ? `${items.length === 12 ? "Top 12" : items.length} matching ${items.length === 1 ? "process" : "processes"}` : "") : "Flagship processes with curated step detail"}</p>
+      <p class="pick-h" aria-live="polite">{q ? (items.length ? `${corrected ? `Showing results for “${corrected}”. ` : ""}${items.length === 12 ? "Top 12" : items.length} matching ${items.length === 1 ? "process" : "processes"}` : "") : "Flagship processes with curated step detail"}</p>
       {items.length ? (
         <ul role="listbox" id="xr-picklist" aria-label="Processes">
           {items.map((ref, i) => (
@@ -164,7 +192,7 @@ function StatusBar({ onShortcuts }: { onShortcuts: () => void }) {
     <footer class="vb-status">
       <p class="st-data">
         {s ? <><span class="num">{s.functions}</span> functions, <span class="num">{s.processes}</span> processes, <span class="num">{s.steps.toLocaleString("en-US")}</span> steps. </> : t.state === "error" ? "The process library didn't load. " : "Loading the process library. "}
-        Pain points are illustrative, modelled on process-mining conventions.
+        <span class="st-ill">Pain points are illustrative.</span>
       </p>
       <p class="st-legal">General information on process design. Not legal, tax or regulatory advice.</p>
       <div class="st-right">
@@ -181,9 +209,10 @@ function Toast() {
     <div class="toast-host" role="status" aria-live="polite">
       {t && (
         <div key={t.id} class={`toast ${t.tone === "warn" ? "is-warn" : ""}`}>
-          <Icon name={t.tone === "warn" ? "close" : "check"} />
+          <Icon name={t.tone === "warn" ? "flag" : "check"} />
           <span>{t.text}</span>
           {t.action && <button type="button" onClick={() => { const a = t.action!; toast.value = null; a.run(); }}>{t.action.label}</button>}
+          <button type="button" class="toast-x" aria-label="Dismiss" onClick={() => { toast.value = null; }}><Icon name="close" /></button>
         </div>
       )}
     </div>

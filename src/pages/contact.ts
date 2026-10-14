@@ -2,7 +2,6 @@ import "../styles/base.css";
 import "../styles/pages.css";
 import { boot } from "../lib/site";
 import { initInner } from "../lib/ui";
-import { loadTaxonomy, indexTaxonomy } from "../lib/data";
 
 boot();
 initInner();
@@ -11,7 +10,13 @@ initInner();
    - Netlify Forms picks it up at deploy (name="talk", data-netlify, honeypot "bot-field").
    - Without JS the browser validates and posts natively, and Netlify redirects to /contact/?sent=1.
    - With JS we validate inline, post with fetch, and if the POST is not handled by Netlify (another
-     host, offline, an error) we open the visitor's email app with the message already written. */
+     host, offline, an error) we open the visitor's email app with the message already written.
+   - ?interest=<key> preselects the interest; ?process=<id>[&fn=<function id>] names a process, resolved
+     against the small /data/process-index.json (process codes repeat across functions, so fn decides).
+   - The assistant path (?interest=assistant, or chosen in the select) rewrites the form in a
+     business owner's words. */
+
+type ProcIndex = { v: number; processes: { fn: string; fnName: string; id: string; name: string }[] };
 
 const form = document.getElementById("talk") as HTMLFormElement | null;
 const params = new URLSearchParams(location.search);
@@ -32,47 +37,103 @@ if (form) {
   const result = $<HTMLElement>("form-result");
   const submit = form.querySelector<HTMLButtonElement>('button[type="submit"]')!;
 
-  /* ---- prefill from the URL: ?interest=close and ?process=8.1.1 ---- */
-  const interest = params.get("interest");
-  if (interest) {
-    const opt = fInterest.querySelector<HTMLOptionElement>(`option[data-key="${CSS.escape(interest)}"]`);
-    if (opt) opt.selected = true;
-  }
-  const pid = params.get("process")?.trim();
-  const pfn = params.get("fn")?.trim() || null;
-  if (pid && /^[\w.-]{1,24}$/.test(pid)) prefillProcess(pid);
+  const pickInterest = (key: string) => {
+    const opt = fInterest.querySelector<HTMLOptionElement>(`option[data-key="${CSS.escape(key)}"]`);
+    if (opt) { opt.selected = true; return true; }
+    return false;
+  };
 
-  async function prefillProcess(id: string) {
-    const chip = $<HTMLElement>("proc-chip");
-    let label = `process ${id}`;
-    try {
-      const { resolve } = indexTaxonomy(await loadTaxonomy());
-      const ref = resolve(id, pfn);
-      if (!ref) return;
-      label = `${ref.proc.id} ${ref.proc.name}`;
-      fProcess.value = `${label} (${ref.fn.functionName})`;
-      const fo = [...fFunction.options].find((o) => o.value === ref.fn.functionName);
-      if (fo && !fFunction.value) fo.selected = true;
-      chip.innerHTML = "";
-      const code = Object.assign(document.createElement("span"), { className: "code", textContent: ref.proc.id });
-      const name = Object.assign(document.createElement("b"), { textContent: ref.proc.name });
-      const open = Object.assign(document.createElement("a"), { className: "link-more", href: `/app/#view=explore&fn=${encodeURIComponent(ref.fn.functionId)}&p=${encodeURIComponent(ref.proc.id)}`, textContent: "Open in the app" });
-      const x = Object.assign(document.createElement("button"), { type: "button", className: "x", textContent: "Remove" });
-      x.setAttribute("aria-label", `Remove process ${ref.proc.id} from the message`);
-      x.addEventListener("click", () => {
-        if (fMessage.value === prefilled) fMessage.value = "";
-        fProcess.value = "";
-        chip.hidden = true;
-        fMessage.focus();
-      });
-      chip.append("About ", code, name, open, x);
-      chip.hidden = false;
-    } catch {
-      // taxonomy unavailable: still carry the id the visitor came with
-      fProcess.value = label;
+  /* ---- the assistant path speaks a business owner's language ---- */
+  const COPY = {
+    process: { h1a: "Tell us about the", h1b: "process you want to fix.", email: "Work email", msg: "What would you like to fix?",
+      hint: "A sentence or two is enough. Name the process if you can.", s2b: "We pick one process", s2: "On the call we choose where to start and what to look at first." },
+    assistant: { h1a: "Tell us the one job", h1b: "you'd hand over first.", email: "Email", msg: "What should the assistant handle first?",
+      hint: "A sentence or two is enough. For example, booking questions on your website.", s2b: "We pick the first job.", s2: "On the call we choose the one job your assistant starts with." },
+  };
+  let mode: keyof typeof COPY = "process";
+  const setMode = (next: keyof typeof COPY, animate = true) => {
+    if (next === mode) return;
+    mode = next;
+    const c = COPY[next];
+    const h1 = $<HTMLElement>("ct-title");
+    $<HTMLElement>("ct-h1a").textContent = c.h1a;
+    $<HTMLElement>("ct-h1b").textContent = c.h1b;
+    $<HTMLElement>("l-email").textContent = c.email;
+    $<HTMLElement>("l-message").textContent = c.msg;
+    $<HTMLElement>("h-message").textContent = c.hint;
+    const s2 = $<HTMLElement>("step-2");
+    s2.querySelector("b")!.textContent = c.s2b;
+    s2.querySelector("span")!.textContent = c.s2;
+    if (animate && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      h1.classList.remove("swap"); void h1.offsetWidth; h1.classList.add("swap");
     }
-    const prefilled = `We'd like to talk about ${label}.`;
+  };
+  const syncMode = () => setMode(fInterest.selectedOptions[0]?.dataset.key === "assistant" ? "assistant" : "process");
+  fInterest.addEventListener("change", syncMode);
+
+  /* ---- prefill from the URL ---- */
+  const interest = params.get("interest");
+  if (interest) pickInterest(interest);
+  setMode(fInterest.selectedOptions[0]?.dataset.key === "assistant" ? "assistant" : "process", false);
+  const pid = params.get("process")?.trim();
+  const pfn = params.get("fn")?.trim() || "";
+  let prefilled = "";
+  if (pid && /^[\w.-]{1,24}$/.test(pid)) prefillProcess(pid, pfn);
+
+  async function prefillProcess(id: string, fn: string) {
+    let label = `process ${id}`;
+    let found: ProcIndex["processes"][number] | undefined;
+    try {
+      const res = await fetch("/data/process-index.json", { headers: { Accept: "application/json" } });
+      if (!res.ok) throw new Error(String(res.status));
+      const idx = (await res.json()) as ProcIndex;
+      const same = idx.processes.filter((p) => p.id === id);
+      found = fn ? same.find((p) => p.fn === fn) : same.length === 1 ? same[0] : undefined;
+      if (!same.length) return; // an id we don't know: leave the form alone
+    } catch {
+      /* index unavailable: still carry the id the visitor came with */
+    }
+    if (found) {
+      label = `${found.id} ${found.name} (${found.fnName})`;
+      const fo = [...fFunction.options].find((o) => o.value === found!.fnName);
+      if (fo && !fFunction.value) fo.selected = true;
+      showChip(found);
+    }
+    fProcess.value = label;
+    if (!interest) {
+      const key = found?.fn === "finance-accounting" && found.id.startsWith("8.1") ? "close"
+        : found?.fn === "procurement" && found.id === "7.1.2" ? "invoice" : "app";
+      pickInterest(key);
+      syncMode();
+    }
+    prefilled = `We'd like to talk about ${label}.`;
     if (!fMessage.value.trim()) fMessage.value = prefilled;
+  }
+
+  function showChip(p: ProcIndex["processes"][number]) {
+    const chip = $<HTMLElement>("proc-chip");
+    chip.replaceChildren();
+    const lead = Object.assign(document.createElement("span"), { className: "chip-k", textContent: "About:" });
+    const code = Object.assign(document.createElement("span"), { className: "code", textContent: p.id });
+    const name = Object.assign(document.createElement("b"), { textContent: p.name });
+    const fnl = Object.assign(document.createElement("span"), { className: "chip-fn", textContent: `(${p.fnName})` });
+    const open = Object.assign(document.createElement("a"), {
+      className: "link-more", textContent: "Open in the app",
+      href: `/app/#view=explore&fn=${encodeURIComponent(p.fn)}&p=${encodeURIComponent(p.id)}`,
+    });
+    const x = Object.assign(document.createElement("button"), { type: "button", className: "x", textContent: "Remove" });
+    x.setAttribute("aria-label", `Remove process ${p.id} from the message`);
+    x.addEventListener("click", () => {
+      if (fMessage.value === prefilled) fMessage.value = "";
+      fProcess.value = "";
+      chip.hidden = true;
+      fMessage.focus();
+    });
+    const text = document.createElement("span");
+    text.className = "chip-text";
+    text.append(lead, " ", code, " ", name, " ", fnl);
+    chip.append(text, open, x);
+    chip.hidden = false;
   }
 
   /* ---- inline validation ---- */
@@ -80,9 +141,9 @@ if (form) {
   type Field = HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
   const rules: [Field, (v: string) => string][] = [
     [fName, (v) => (v ? "" : "Enter your name.")],
-    [fEmail, (v) => (!v ? "Enter your work email." : EMAIL_RE.test(v) ? "" : "Enter an email address like name@company.com.")],
+    [fEmail, (v) => (!v ? (mode === "assistant" ? "Enter your email." : "Enter your work email.") : EMAIL_RE.test(v) ? "" : "Enter an email address like name@company.com.")],
     [fInterest, (v) => (v ? "" : "Choose what you're interested in.")],
-    [fMessage, (v) => (!v ? "Tell us briefly what you'd like to fix." : v.length < 10 ? "Add a little more detail. A sentence is enough." : "")],
+    [fMessage, (v) => (!v ? (mode === "assistant" ? "Tell us briefly what the assistant should handle first." : "Tell us briefly what you'd like to fix.") : v.length < 10 ? "Add a little more detail. A sentence is enough." : "")],
   ];
   const touched = new WeakSet<Field>();
   const check = (el: Field, rule: (v: string) => string) => {
@@ -105,7 +166,7 @@ if (form) {
     rules.forEach(([el]) => touched.add(el));
     const bad = rules.filter(([el, rule]) => !check(el, rule)).map(([el]) => el);
     if (bad.length) {
-      status.innerHTML = "";
+      status.replaceChildren();
       const p = document.createElement("p");
       p.className = "err";
       p.textContent = bad.length === 1 ? "One field needs attention." : `${bad.length} fields need attention.`;
@@ -149,7 +210,7 @@ if (form) {
   function composeMail() {
     const meta = ([
       ["Name", fName.value.trim()],
-      ["Work email", fEmail.value.trim()],
+      [mode === "assistant" ? "Email" : "Work email", fEmail.value.trim()],
       ["Company", fCompany.value.trim()],
       ["Interested in", fInterest.value],
       ["Function", fFunction.value],

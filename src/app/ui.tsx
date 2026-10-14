@@ -3,7 +3,8 @@ import type { ComponentChildren, JSX } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { STILLS, srcset, bestSrc } from "../lib/media";
 import { splitMatches } from "./search";
-import type { Severity, Zone } from "../lib/data";
+import { humanizeTitle, humanizeImpact, wrapperOf, WRAPPER_WHERE, IMPACT_PREFIX, type Severity, type Zone, type PainPoint } from "../lib/data";
+import { taxIdx } from "./state";
 
 /* ---- Icons: 16px line glyphs drawn on a 16 grid, stroke = currentColor ---------------------- */
 const P: Record<string, JSX.Element> = {
@@ -38,10 +39,28 @@ export function FnIcon({ id, class: cls = "" }: { id: string; class?: string }) 
   return <span class={`fn-ico ${cls}`} aria-hidden="true" style={{ "--icon": `url("/media/icons/${id}.webp")` }} />;
 }
 
-export function Hl({ text, terms }: { text: string; terms: string[] }) {
-  if (!terms.length) return <>{text}</>;
-  return <>{splitMatches(text, terms).map((p, i) => (p.m ? <mark key={i}>{p.t}</mark> : p.t))}</>;
+/** Highlight query matches; `hl` holds regex sources from search.compile(). */
+export function Hl({ text, hl }: { text: string; hl: string[] }) {
+  if (!hl.length) return <>{text}</>;
+  return <>{splitMatches(text, hl).map((p, i) => (p.m ? <mark key={i}>{p.t}</mark> : p.t))}</>;
 }
+
+/* ---- pain-point wording, shared by every view ------------------------------------------------------ */
+export const Ill = () => <span class="ill">Illustrative</span>;
+export const painTitle = (p: PainPoint) => humanizeTitle(p.title, p.taskName);
+export function painImpact(p: PainPoint) {
+  const kpis = taxIdx.value?.resolve(p.processId, p.functionId)?.proc.calibration.kpis || [];
+  return humanizeImpact(p.impact, kpis);
+}
+/** Where a point sits: its exact step for core steps, task level for the standard wrapper steps. */
+export function painWhere(p: PainPoint): { wrapper: boolean; text: string } {
+  const w = wrapperOf(p.stepText);
+  return w ? { wrapper: true, text: `${WRAPPER_WHERE[w.kind]} (standard step)` } : { wrapper: false, text: `Step ${p.stepIndex + 1}` };
+}
+export const Impact = ({ p, hl = [] }: { p: PainPoint; hl?: string[] }) => (
+  <p class="impact"><span class="impact-pre">{IMPACT_PREFIX}</span> <Hl text={painImpact(p)} hl={hl} /></p>
+);
+export const talkHref = (p: { processId: string; functionId: string }) => `/contact/?process=${encodeURIComponent(p.processId)}&fn=${encodeURIComponent(p.functionId)}`;
 
 export function Still({ name, sizes = "320px", class: cls = "", alt }: { name: string; sizes?: string; class?: string; alt?: string }) {
   const s = STILLS[name];

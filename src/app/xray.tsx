@@ -1,35 +1,48 @@
-/* X-ray: every L6 step of one process sorted into Auto / Assist / Human by zoneOf(), with the
-   reason shown, pain points pinned, and the user free to move any step. Moves live in the URL. */
+/* X-ray: every step of one process sorted into Auto / Assist / Human by zoneOf(), with the reason shown,
+   pain points pinned, and the reader free to move any step. By default it counts core steps (the work
+   each task names); the standard wrapper steps fold into one row per task. Moves live in the URL. */
 import { signal, computed } from "@preact/signals";
 import { useLayoutEffect, useRef } from "preact/hooks";
-import { ZONES, ZONE_ORDER, zoneOf, gatewayOf, stepKey, PAIN_NOTE, type Zone, type ZoneCall, type PainPoint, type ProcRef } from "../lib/data";
-import { route, go, hrefFor, tax, painIdx, currentProc, taxIdx, zoneBenchmark, loadData, say, announce, stepIdOf } from "./state";
+import {
+  ZONES, ZONE_ORDER, zoneOf, gatewayOf, stepKey, wrapperOf, stepLabel, humanizeStep, shares, PAIN_NOTE, WRAPPER_WHERE, SEVERITIES,
+  type Zone, type ZoneCall, type PainPoint, type ProcRef, type WrapperKind,
+} from "../lib/data";
+import { route, go, hrefFor, shareUrl, tax, pain, painIdx, currentProc, taxIdx, zoneBenchmark, loadData, say, announce, stepIdOf, type Basis } from "./state";
 import { searchProcs } from "./search";
-import { Icon, FnIcon, Still, SevMark, ErrorState, Skel, plural, pct, copyText, useTween, reduceMotion } from "./ui";
+import { Icon, FnIcon, Still, SevMark, ErrorState, Skel, Ill, painTitle, plural, copyText, useTween, reduceMotion } from "./ui";
+import { Seg } from "./controls";
 
-export interface XStep { sid: string; taskId: string; taskName: string; actName: string; text: string; call: ZoneCall; pins: PainPoint[]; gw: boolean; n: number }
+export interface XStep {
+  sid: string; taskId: string; taskName: string; actName: string; text: string; label: string; call: ZoneCall;
+  pins: PainPoint[]; gw: boolean; n: number; std: { kind: WrapperKind; label: string } | null;
+}
 
 const xsteps = computed<XStep[]>(() => {
   const ref = currentProc.value; if (!ref) return [];
   const pins = painIdx.value?.idx.byStep; const out: XStep[] = []; let n = 0;
   for (const a of ref.proc.activities) for (const t of a.tasks) t.steps.forEach((s, i) => {
-    out.push({ sid: stepIdOf(t.id, i), taskId: t.id, taskName: t.name, actName: a.name, text: s, call: zoneOf(s, t.name),
-      pins: pins?.get(stepKey(ref.fn.functionId, t.id, i)) || [], gw: !!gatewayOf(s), n: n++ });
+    out.push({ sid: stepIdOf(t.id, i), taskId: t.id, taskName: t.name, actName: a.name, text: s, label: stepLabel(s, t.name), call: zoneOf(s, t.name),
+      pins: pins?.get(stepKey(ref.fn.functionId, t.id, i)) || [], gw: !!gatewayOf(s), n: n++, std: wrapperOf(s) });
   });
   return out;
 });
 const zoneFor = (s: XStep) => route.value.z[s.sid] || s.call.zone;
+const inBasis = (s: XStep, b: Basis) => b === "all" || !s.std;
+const painFailed = () => pain.value.state === "error";
+const sevRank = (p: PainPoint[]) => (p.length ? SEVERITIES.indexOf(p[0].severity) : 9);
 
 /* ---- process picker (driven by the toolbar search while in X-ray) -------------------------------- */
 export const pickOpen = signal(false);
 export const pickQ = signal("");
 export const pickActive = signal(0);
-export const pickItems = computed<ProcRef[]>(() => {
-  const idx = taxIdx.value; if (!idx) return [];
+export const pickRes = computed(() => {
+  const idx = taxIdx.value; if (!idx) return { items: [] as ProcRef[], corrected: undefined as string | undefined };
   const q = pickQ.value.trim();
-  if (!q) return idx.list.filter((r) => r.flagship);
-  return searchProcs(idx.list, q).slice(0, 12).map((h) => h.ref);
+  if (!q) return { items: idx.list.filter((r) => r.flagship), corrected: undefined };
+  const res = searchProcs(idx.list, q);
+  return { items: res.hits.slice(0, 12).map((h) => h.ref), corrected: res.corrected };
 });
+export const pickItems = computed(() => pickRes.value.items);
 export function choose(ref: ProcRef) {
   pickOpen.value = false; pickQ.value = "";
   go({ view: "xray", fn: ref.fn.functionId, p: ref.proc.id });
@@ -40,7 +53,7 @@ export function pickerKey(e: KeyboardEvent): boolean {
   switch (e.key) {
     case "ArrowDown": pickOpen.value = true; pickActive.value = Math.min(items.length - 1, pickActive.value + 1); break;
     case "ArrowUp": pickActive.value = Math.max(0, pickActive.value - 1); break;
-    case "Enter": if (!pickOpen.value || !items[pickActive.value]) return false; choose(items[pickActive.value]); break;
+    case "Enter": if (!items[pickActive.value]) return false; choose(items[pickActive.value]); break;
     case "Escape": if (!pickOpen.value && !pickQ.value) return false; pickOpen.value = false; pickQ.value = ""; break;
     default: return false;
   }
@@ -48,8 +61,7 @@ export function pickerKey(e: KeyboardEvent): boolean {
 }
 export function openPicker() {
   pickOpen.value = true; pickActive.value = 0;
-  const el = document.getElementById("vb-search") as HTMLInputElement | null;
-  el?.focus();
+  (document.getElementById("vb-search") as HTMLInputElement | null)?.focus();
 }
 
 /* ---- moves ------------------------------------------------------------------------------------ */
@@ -61,24 +73,30 @@ function captureRects() {
   flipFrom = new Map();
   document.querySelectorAll<HTMLElement>(".lanes [data-step]").forEach((el) => flipFrom!.set(el.dataset.step!, el.getBoundingClientRect()));
 }
-function counts(steps: XStep[]) {
+function counts(steps: XStep[], basis: Basis) {
   const c: Record<Zone, number> = { auto: 0, assist: 0, human: 0 }; const p: Record<Zone, number> = { auto: 0, assist: 0, human: 0 };
-  for (const s of steps) { const z = zoneFor(s); c[z]++; p[z] += s.pins.length; }
-  return { c, p };
+  let total = 0, stdPins = 0;
+  for (const s of steps) {
+    if (!inBasis(s, basis)) { stdPins += s.pins.length; continue; }
+    const z = zoneFor(s); c[z]++; p[z] += s.pins.length; total++;
+  }
+  return { c, p, total, stdPins, pct: shares(ZONE_ORDER.map((z) => c[z])) };
 }
 export function moveStep(s: XStep, to: Zone, o: { focus?: boolean; quiet?: boolean } = {}) {
   const from = zoneFor(s); if (from === to) return;
   captureRects();
   if (o.focus !== false) {
-    // on phones the destination lane is hidden, so focus falls to the neighbouring card
+    // on phones the destination lane is hidden, so focus falls to the neighboring card
     const el = document.querySelector<HTMLElement>(`.lanes [data-step="${CSS.escape(s.sid)}"]`);
     focusAfter = s.sid;
-    focusFallback = ((el?.nextElementSibling || el?.previousElementSibling) as HTMLElement | null)?.dataset.step || null;
+    const all = el ? [...(el.closest(".lane")?.querySelectorAll<HTMLElement>("[data-step]") || [])] : [];
+    const j = el ? all.indexOf(el) : -1;
+    focusFallback = (all[j + 1] || all[j - 1])?.dataset.step || null;
   }
   const z = { ...route.value.z };
   if (to === s.call.zone) delete z[s.sid]; else z[s.sid] = to;
   go({ z }, { replace: true });
-  const { c } = counts(xsteps.value);
+  const { c } = counts(xsteps.value, route.value.basis);
   announce.value = `Step ${s.sid} moved to ${ZONES[to].label}. Auto ${c.auto}, Assist ${c.assist}, Human ${c.human}.`;
   if (!o.quiet) say(`Moved ${s.sid} to ${ZONES[to].label}`, { tone: "ok", action: { label: "Undo", run: () => moveStep(s, from, { quiet: true }) } });
 }
@@ -86,27 +104,32 @@ const resetAll = () => { captureRects(); go({ z: {} }, { replace: true }); annou
 
 /* ---- view ------------------------------------------------------------------------------------- */
 const mLane = signal<Zone>("auto");
+/** Task fold rows the reader opened, keyed "<zone>|<taskId>". */
+const openFold = signal<Set<string>>(new Set());
 
 /** After jumping in from Explore, bring the chosen step forward (switching the phone lane if needed) and focus it. */
 export function focusXrayStep(sid: string, tries = 20) {
+  const step = xsteps.value.find((s) => s.sid === sid);
+  if (step?.std && route.value.basis === "core") { const k = `${zoneFor(step)}|${step.taskId}`; if (!openFold.value.has(k)) openFold.value = new Set([...openFold.value, k]); }
   const el = document.querySelector<HTMLElement>(`.lanes [data-step="${CSS.escape(sid)}"]`);
   if (!el) { if (tries > 0) setTimeout(() => focusXrayStep(sid, tries - 1), 60); return; }
   const lane = el.closest<HTMLElement>("[data-zone]")?.dataset.zone as Zone | undefined;
-  if (!el.offsetParent && lane) { mLane.value = lane; requestAnimationFrame(() => focusXrayStep(sid, 0)); return; }
+  if (!el.getClientRects().length && lane && tries > 0) { mLane.value = lane; requestAnimationFrame(() => focusXrayStep(sid, 0)); return; }
   el.scrollIntoView({ block: "center", behavior: reduceMotion() ? "auto" : "smooth" });
   el.focus({ preventScroll: true }); el.classList.add("is-target"); setTimeout(() => el.classList.remove("is-target"), 2400);
 }
 
 export function XRay() {
   const t = tax.value;
-  if (t.state === "error") return <div class="xr xr-state"><ErrorState what="The process library" onRetry={loadData} /></div>;
+  if (t.state === "error") return <div class="xr xr-state"><ErrorState what="The process library" onRetry={() => loadData({ focus: true })} /></div>;
   const ref = currentProc.value;
   return (
     <div class="xr">
       <div class="pane-scroll xr-scroll" id="xr-scroll">
         <div class="xr-wrap">
-          {ref ? <XHead ref_={ref} /> : <div class="xr-head"><div class="xr-intro"><Skel rows={4} class="skel-title" /></div></div>}
-          {ref ? <Summary ref_={ref} /> : <div class="xr-sum"><Skel rows={3} /></div>}
+          {ref ? <XHead pr={ref} /> : <div class="xr-head"><div class="xr-intro"><Skel rows={4} class="skel-title" /></div></div>}
+          {ref ? <Summary pr={ref} /> : <div class="xr-sum"><Skel rows={3} /></div>}
+          {ref && <StartHere />}
           {ref ? <Lanes /> : <div class="lanes">{ZONE_ORDER.map((z) => <section key={z} class={`lane z-${z}`}><Skel rows={10} class="skel-cards" /></section>)}</div>}
         </div>
       </div>
@@ -114,8 +137,8 @@ export function XRay() {
   );
 }
 
-function XHead({ ref_: ref }: { ref_: ProcRef }) {
-  const { fn, group, proc } = ref;
+function XHead({ pr }: { pr: ProcRef }) {
+  const { fn, group, proc } = pr;
   return (
     <header class="xr-head">
       <div class="xr-intro">
@@ -126,20 +149,29 @@ function XHead({ ref_: ref }: { ref_: ProcRef }) {
           <button type="button" class="b b-ghost b-sm" onClick={openPicker}><Icon name="search" />Choose another process</button>
           <a class="b b-quiet b-sm" href={hrefFor({ view: "explore", fn: fn.functionId, p: proc.id, s: undefined })}
             onClick={(e) => { e.preventDefault(); go({ view: "explore", fn: fn.functionId, p: proc.id }); }}>Open in Explore</a>
+          <button type="button" class="b b-quiet b-sm" onClick={async () => {
+            const ok = await copyText(shareUrl()); say(ok ? "Link copied" : "Couldn't copy. The link is in the address bar.", { tone: ok ? "ok" : "warn" });
+          }}><Icon name="link" />Copy link</button>
         </div>
       </div>
-      <figure class="xr-art" aria-hidden="true"><Still name="atlas-columns" sizes="(min-width: 900px) 240px, 40vw" alt="" /></figure>
+      <figure class="xr-art" aria-hidden="true"><Still name="atlas-columns" sizes="(min-width: 900px) 150px, 88px" alt="" /></figure>
     </header>
   );
 }
 
-function Summary({ ref_: ref }: { ref_: ProcRef }) {
-  const steps = xsteps.value; const r = route.value; const total = steps.length;
-  const { c, p } = counts(steps); const moved = Object.keys(r.z).length;
-  const bench = zoneBenchmark.value;
+function PainRetry({ short = false }: { short?: boolean }) {
+  return <span class="pain-fail">{short ? "Pain points didn't load" : "Pain points didn't load."} <button type="button" class="linkish" onClick={() => loadData()}>Try again</button></span>;
+}
+
+function Summary({ pr }: { pr: ProcRef }) {
+  const steps = xsteps.value; const r = route.value;
+  const { c, p, total, stdPins, pct } = counts(steps, r.basis); const moved = Object.keys(r.z).length;
+  const nCore = steps.filter((s) => !s.std).length;
+  const bench = zoneBenchmark.value?.[r.basis];
+  const benchPct = bench ? shares(ZONE_ORDER.map((z) => bench.n[z])) : null;
   const copy = async () => {
-    const ok = await copyText(summaryText(ref, steps));
-    say(ok ? "Summary copied" : "Couldn't copy. Try again, or use Copy from the address bar link.", { tone: ok ? "ok" : "warn" });
+    const ok = await copyText(summaryText(pr, steps));
+    say(ok ? "Summary copied" : "Couldn't copy. Try again, or copy the link from the address bar.", { tone: ok ? "ok" : "warn" });
     const btn = document.getElementById("xr-copy"); if (ok && btn) { btn.classList.add("is-done"); setTimeout(() => btn.classList.remove("is-done"), 1800); }
   };
   return (
@@ -150,41 +182,97 @@ function Summary({ ref_: ref }: { ref_: ProcRef }) {
         <div class="sum-actions">
           {moved > 0 && <button type="button" class="b b-quiet b-sm" onClick={resetAll}><Icon name="reset" />Reset</button>}
           <button type="button" id="xr-copy" class="b b-ghost b-sm copy-btn" onClick={copy}><span class="cb-a"><Icon name="copy" />Copy summary</span><span class="cb-b" aria-hidden="true"><Icon name="check" />Copied</span></button>
-          <a class="b b-primary b-sm" href={`/contact/?process=${encodeURIComponent(ref.proc.id)}&fn=${encodeURIComponent(ref.fn.functionId)}`}><Icon name="mail" />Talk to us about this process</a>
+          <a class="b b-primary b-sm" href={`/contact/?process=${encodeURIComponent(pr.proc.id)}&fn=${encodeURIComponent(pr.fn.functionId)}`}><Icon name="mail" />Talk to us about this process</a>
         </div>
       </div>
-      <div class="zbar" role="img" aria-label={ZONE_ORDER.map((z) => `${ZONES[z].label} ${pct(c[z], total)}%`).join(", ")}>
+      <div class="basis-row">
+        <Seg label="Count" size="sm" value={r.basis} onChange={(basis) => go({ basis }, { replace: true })}
+          options={[{ id: "core", label: <>Core steps <span class="num">{nCore}</span></> }, { id: "all", label: <>All steps <span class="num">{steps.length}</span></> }]} />
+        <p class="basis-help">{r.basis === "core"
+          ? `Core steps are the work each task names. The other ${steps.length - nCore} follow the standard receive, check, decide and hand-off pattern and are folded into their task.`
+          : `All ${steps.length} steps, including the standard receive, check, decide and hand-off pattern around each task.`}</p>
+      </div>
+      <div class="zbar" role="img" aria-label={ZONE_ORDER.map((z, i) => `${ZONES[z].label} ${pct[i]}%`).join(", ")}>
         {ZONE_ORDER.map((z) => <span key={z} class={`zbar-seg z-${z}`} style={{ flexGrow: String(c[z]), flexBasis: c[z] ? "3px" : "0px" }} />)}
       </div>
       <div class="sum-meta">
-        <p class="sum-total"><span class="num">{total}</span> steps in this process{moved ? <span class="sum-moved">, {moved} moved by you</span> : null}</p>
-        {bench && (
+        <p class="sum-total"><span class="num">{total}</span> {r.basis === "core" ? "core steps" : "steps"} in this process{moved ? <span class="sum-moved">, {moved} moved by you</span> : null}</p>
+        {bench && benchPct && (
           <div class="bench">
             <div class="zbar zbar-thin" aria-hidden="true">{ZONE_ORDER.map((z) => <span key={z} class={`zbar-seg z-${z}`} style={{ flexGrow: String(bench.n[z]) }} />)}</div>
-            <p>All {bench.total.toLocaleString("en-US")} steps in the taxonomy: {ZONE_ORDER.map((z, i) => <span key={z}>{i ? ", " : ""}{ZONES[z].label} {pct(bench.n[z], bench.total)}%</span>)}</p>
+            <p>All {bench.total.toLocaleString("en-US")} {r.basis === "core" ? "core steps" : "steps"} in the taxonomy: {ZONE_ORDER.map((z, i) => <span key={z}>{i ? ", " : ""}{ZONES[z].label} {benchPct[i]}%</span>)}</p>
           </div>
         )}
       </div>
       <dl class="zstats">
-        {ZONE_ORDER.map((z) => <ZStat key={z} z={z} n={c[z]} total={total} pains={p[z]} />)}
+        {ZONE_ORDER.map((z, i) => <ZStat key={z} z={z} n={c[z]} share={pct[i]} pains={p[z]} />)}
       </dl>
+      {r.basis === "core" && stdPins > 0 && !painFailed() && (
+        <p class="std-pins">{plural(stdPins, "more illustrative pain point")} {stdPins === 1 ? "sits" : "sit"} on standard steps and {stdPins === 1 ? "is" : "are"} shown on their task's folded row. <Ill /></p>
+      )}
     </section>
   );
 }
-function ZStat({ z, n, total, pains }: { z: Zone; n: number; total: number; pains: number }) {
-  const tn = useTween(n); const tp = useTween(pct(n, total));
+function ZStat({ z, n, share, pains }: { z: Zone; n: number; share: number; pains: number }) {
+  const tn = useTween(n); const tp = useTween(share);
+  const pd = pain.value.state;
   return (
     <div class={`zs z-${z}`}>
       <dt><i aria-hidden="true" />{ZONES[z].label}</dt>
       <dd class="zs-fig"><span class="zs-n num">{Math.round(tn)}</span><span class="zs-pct num">{Math.round(tp)}%</span></dd>
-      <dd class="zs-pain">{pains ? <><span class="tick" aria-hidden="true" />{plural(pains, "pain point")}</> : "No pain points"}</dd>
+      <dd class="zs-pain">
+        {pd === "error" ? <PainRetry short /> : pd === "loading" ? "Loading pain points" :
+          pains ? <><span class="tick" aria-hidden="true" />{plural(pains, "pain point")} <Ill /></> : "No pain points in this zone"}
+      </dd>
     </div>
   );
 }
 
+function StartHere() {
+  const steps = xsteps.value;
+  const autos = steps.filter((s) => !s.std && zoneFor(s) === "auto");
+  const list = [...autos.filter((s) => s.pins.length).sort((a, b) => sevRank(a.pins) - sevRank(b.pins) || a.n - b.n), ...autos.filter((s) => !s.pins.length)].slice(0, 5);
+  return (
+    <section class="xr-start" aria-labelledby="start-h">
+      <div class="start-head">
+        <h3 id="start-h" class="h-md">Start here</h3>
+        <p class="d-sec-sub">Core steps an AI agent could run and check, the ones with illustrative pain points first.</p>
+      </div>
+      {list.length ? (
+        <ol class="start-list">
+          {list.map((s) => (
+            <li key={s.sid}>
+              <button type="button" class="start-item" onClick={() => { if (route.value.only && !s.pins.length) go({ only: false }, { replace: true }); mLane.value = "auto"; focusXrayStep(s.sid); }}>
+                <span class="start-top"><span class="code">{s.sid}</span><span class="start-task">{s.taskName}</span></span>
+                <span class="start-text">{s.label}</span>
+                {s.pins[0] ? <span class="start-pin"><SevMark sev={s.pins[0].severity} />{painTitle(s.pins[0])}<Ill /></span>
+                  : <span class="start-pin muted">{painFailed() ? "Pain points didn't load" : "No pain point recorded"}</span>}
+              </button>
+            </li>
+          ))}
+        </ol>
+      ) : <p class="start-none">No core step in this process sorts to Auto on its wording. Look at the Assist lane, where an AI agent drafts and a person approves.</p>}
+    </section>
+  );
+}
+
+interface LaneItem { kind: "card"; s: XStep }
+interface FoldItem { kind: "fold"; taskId: string; taskName: string; steps: XStep[] }
+function laneItems(steps: XStep[], z: Zone, basis: Basis, only: boolean): (LaneItem | FoldItem)[] {
+  const out: (LaneItem | FoldItem)[] = []; let fold: FoldItem | null = null;
+  for (const s of steps) {
+    if (zoneFor(s) !== z) continue;
+    if (basis === "core" && s.std) {
+      if (!fold || fold.taskId !== s.taskId) { fold = { kind: "fold", taskId: s.taskId, taskName: s.taskName, steps: [] }; out.push(fold); }
+      fold.steps.push(s);
+    } else { out.push({ kind: "card", s }); fold = null; }
+  }
+  return only ? out.filter((x) => (x.kind === "card" ? x.s.pins.length > 0 : x.steps.some((s) => s.pins.length))) : out;
+}
+
 function Lanes() {
   const steps = xsteps.value; const r = route.value; const box = useRef<HTMLDivElement>(null);
-  const zkey = JSON.stringify(r.z);
+  const zkey = JSON.stringify(r.z) + r.basis + r.only + [...openFold.value].join();
   useLayoutEffect(() => {
     const from = flipFrom; flipFrom = null;
     if (from && box.current) {
@@ -199,14 +287,22 @@ function Lanes() {
       const find = (sid: string | null) => (sid ? box.current?.querySelector<HTMLElement>(`[data-step="${CSS.escape(sid)}"]`) : null);
       const el = find(focusAfter); const alt = find(focusFallback);
       focusAfter = null; focusFallback = null;
-      if (el && el.offsetParent) el.focus({ preventScroll: true });
-      else if (alt && alt.offsetParent) alt.focus({ preventScroll: true });
+      if (el && el.getClientRects().length) el.focus({ preventScroll: true });
+      else if (alt && alt.getClientRects().length) alt.focus({ preventScroll: true });
     }
   }, [zkey]);
-  const byZone: Record<Zone, XStep[]> = { auto: [], assist: [], human: [] };
-  for (const s of steps) byZone[zoneFor(s)].push(s);
+  const items = Object.fromEntries(ZONE_ORDER.map((z) => [z, laneItems(steps, z, r.basis, r.only)])) as Record<Zone, (LaneItem | FoldItem)[]>;
+  const counted = (z: Zone) => steps.filter((s) => zoneFor(s) === z && inBasis(s, r.basis)).length;
   return (
     <div class="lanes-wrap">
+      <div class="lanes-tools">
+        <label class="switch">
+          <input type="checkbox" checked={r.only} onChange={(e) => go({ only: (e.currentTarget as HTMLInputElement).checked }, { replace: true })} disabled={painFailed()} />
+          <span class="switch-ui" aria-hidden="true" /><span>Only steps with pain points</span>
+        </label>
+        <p class="kbd-hint" id="xr-kbd">Select a step, then press <kbd>←</kbd> <kbd>→</kbd> to move it, or <kbd>A</kbd> <kbd>S</kbd> <kbd>H</kbd> for Auto, Assist, Human.</p>
+      </div>
+      {painFailed() && <p class="pain-banner"><PainRetry /></p>}
       <div class="lane-switch" role="radiogroup" aria-label="Show lane"
         onKeyDown={(e) => {
           const i = ZONE_ORDER.indexOf(mLane.value);
@@ -214,33 +310,59 @@ function Lanes() {
         }}>
         {ZONE_ORDER.map((z) => (
           <button key={z} id={`ls-${z}`} type="button" role="radio" aria-checked={mLane.value === z} tabIndex={mLane.value === z ? 0 : -1} class={`z-${z}`} onClick={() => { mLane.value = z; }}>
-            <i aria-hidden="true" />{ZONES[z].label}<span class="num">{byZone[z].length}</span>
+            <i aria-hidden="true" />{ZONES[z].label}<span class="num">{counted(z)}</span>
           </button>
         ))}
       </div>
-      <p class="kbd-hint" id="xr-kbd">Select a step, then press <kbd>←</kbd> <kbd>→</kbd> to move it to another zone, or <kbd>A</kbd> <kbd>S</kbd> <kbd>H</kbd> for Auto, Assist, Human.</p>
       <div class="lanes" ref={box} data-lane={mLane.value}>
         {ZONE_ORDER.map((z) => (
           <section key={z} class={`lane z-${z}`} aria-labelledby={`lane-${z}-h`} data-zone={z}>
             <header class="lane-head">
-              <h3 id={`lane-${z}-h`}><i aria-hidden="true" />{ZONES[z].label}<span class="num">{byZone[z].length}</span></h3>
+              <h3 id={`lane-${z}-h`}><i aria-hidden="true" />{ZONES[z].label}<span class="num">{counted(z)}</span></h3>
               <p>{ZONES[z].rule}</p>
             </header>
-            {byZone[z].length ? (
-              <ol class="lane-list">{byZone[z].map((s) => <Card key={s.sid} s={s} zone={z} />)}</ol>
+            {items[z].length ? (
+              <ol class="lane-list">
+                {items[z].map((it) => it.kind === "card" ? <Card key={it.s.sid} s={it.s} zone={z} /> : <Fold key={`f-${it.taskId}`} f={it} zone={z} />)}
+              </ol>
             ) : (
-              <div class="lane-empty"><p>No steps here.</p><p>Move one in with the zone buttons on any step.</p></div>
+              <div class="lane-empty"><p>{r.only ? "No steps with pain points here." : "No steps here."}</p><p>{r.only ? "Turn off the filter to see every step." : "Move one in with the zone control on any step."}</p></div>
             )}
           </section>
         ))}
       </div>
-      <p class="note xr-note">Pain points pinned on steps come from the illustrative library. {PAIN_NOTE.replace(/^Illustrative library, /, "It is ")}</p>
+      <p class="note xr-note">Pain points on steps come from the illustrative library. {PAIN_NOTE.replace(/^Illustrative library, /, "It is ")}</p>
     </div>
   );
 }
 
-function Card({ s, zone }: { s: XStep; zone: Zone }) {
-  const moved = zone !== s.call.zone;
+function Fold({ f, zone }: { f: FoldItem; zone: Zone }) {
+  const k = `${zone}|${f.taskId}`; const open = openFold.value.has(k);
+  const pins = f.steps.flatMap((s) => s.pins);
+  const toggle = () => { const n = new Set(openFold.value); if (open) n.delete(k); else n.add(k); openFold.value = n; };
+  return (
+    <li class={`fold${open ? " is-open" : ""}`}>
+      <button type="button" class="fold-btn" aria-expanded={open} onClick={toggle}>
+        <Icon name="chevron" class="chev" />
+        <span class="fold-main">
+          <span class="fold-top"><span class="code">{f.taskId}</span><span class="fold-task">{f.taskName}</span></span>
+          <span class="fold-text"><span class="num">{f.steps.length}</span> standard {f.steps.length === 1 ? "step" : "steps"}: {f.steps.map((s) => s.std!.label.toLowerCase()).join(", ")}</span>
+        </span>
+      </button>
+      {pins.length > 0 && (
+        <div class="fold-pins">
+          {f.steps.filter((s) => s.pins.length).map((s) => s.pins.map((p) => (
+            <p key={p.id} class={`card-pin sev-${p.severity}`}><SevMark sev={p.severity} /><span>{painTitle(p)} <span class="pin-where">{WRAPPER_WHERE[s.std!.kind]}</span></span><Ill /></p>
+          )))}
+        </div>
+      )}
+      {open && <ol class="fold-list">{f.steps.map((s) => <Card key={s.sid} s={s} zone={zone} compact />)}</ol>}
+    </li>
+  );
+}
+
+function Card({ s, zone, compact = false }: { s: XStep; zone: Zone; compact?: boolean }) {
+  const moved = zone !== s.call.zone; const failed = painFailed();
   const onKey = (e: KeyboardEvent) => {
     if (e.target !== e.currentTarget) return;
     const i = ZONE_ORDER.indexOf(zone); const k = e.key.toLowerCase();
@@ -250,22 +372,24 @@ function Card({ s, zone }: { s: XStep; zone: Zone }) {
     else if (k === "a" || k === "1") to = "auto"; else if (k === "s" || k === "2") to = "assist"; else if (k === "h" || k === "3") to = "human";
     else if (k === "r" && moved) to = s.call.zone;
     else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-      const li = e.currentTarget as HTMLElement; const sib = (e.key === "ArrowDown" ? li.nextElementSibling : li.previousElementSibling) as HTMLElement | null;
-      sib?.focus(); e.preventDefault(); return;
+      const all = [...(e.currentTarget as HTMLElement).closest(".lane")!.querySelectorAll<HTMLElement>("[data-step]")];
+      const j = all.indexOf(e.currentTarget as HTMLElement); all[j + (e.key === "ArrowDown" ? 1 : -1)]?.focus(); e.preventDefault(); return;
     }
     if (to && !e.metaKey && !e.ctrlKey && !e.altKey) { e.preventDefault(); e.stopPropagation(); moveStep(s, to); }
   };
   return (
-    <li class={`card z-${zone}${moved ? " is-moved" : ""}${s.gw ? " is-gw" : ""}`} data-step={s.sid} tabIndex={0} aria-describedby="xr-kbd" onKeyDown={onKey}>
-      <p class="card-top"><span class="code">{s.sid}</span><span class="card-task">{s.taskName}</span></p>
-      <p class="card-text">{s.gw && <span class="sr-only">Decision point: </span>}{s.text}</p>
+    <li class="card-li"><div class={`card z-${zone}${moved ? " is-moved" : ""}${s.gw ? " is-gw" : ""}${s.std ? " is-std" : ""}${compact ? " is-compact" : ""}`} data-step={s.sid} tabIndex={0}
+      role="group" aria-label={`${ZONES[zone].label}. Step ${s.sid}${s.std ? ", standard step" : ""}: ${s.label}`} aria-describedby="xr-kbd" onKeyDown={onKey}>
+      <p class="card-top"><span class="code">{s.sid}</span>{s.std ? <span class="std-tag">Standard step</span> : <span class="card-task">{s.taskName}</span>}</p>
+      <p class="card-text">{s.gw && <span class="sr-only">Decision point: </span>}{s.label}</p>
       <p class="card-why">
         {moved ? <><span class="why-l">Moved by you.</span> First pass: {ZONES[s.call.zone].label}. {s.call.why}</> : <><span class="why-l">Why</span>{s.call.why}</>}
       </p>
       {s.pins.map((p) => (
-        <p key={p.id} class={`card-pin sev-${p.severity}`}><SevMark sev={p.severity} /><span>{p.title}</span></p>
+        <p key={p.id} class={`card-pin sev-${p.severity}`}><SevMark sev={p.severity} /><span>{painTitle(p)}{s.std && <span class="pin-where"> {WRAPPER_WHERE[s.std.kind]}</span>}</span><Ill /></p>
       ))}
-      <div class="card-move" role="group" aria-label={`Zone for step ${s.sid}`}>
+      {failed && <p class="card-fail">Pain points didn't load</p>}
+      <div class="zseg" role="group" aria-label={`Move step ${s.sid}`}>
         {ZONE_ORDER.map((z) => (
           <button key={z} type="button" tabIndex={-1} class={`mv z-${z}`} aria-pressed={z === zone} onClick={() => moveStep(s, z)}>
             <i aria-hidden="true" />{ZONES[z].label}
@@ -273,28 +397,34 @@ function Card({ s, zone }: { s: XStep; zone: Zone }) {
         ))}
         {moved && <button type="button" tabIndex={-1} class="mv mv-undo" onClick={() => moveStep(s, s.call.zone)} title="Put back where the first pass sorted it"><Icon name="undo" /><span class="sr-only">Put back to {ZONES[s.call.zone].label}</span></button>}
       </div>
-    </li>
+    </div></li>
   );
 }
 
 function summaryText(ref: ProcRef, steps: XStep[]) {
-  const r = route.value; const total = steps.length; const { c, p } = counts(steps);
-  const moved = steps.filter((s) => r.z[s.sid]);
+  const r = route.value; const { c, p, total, pct, stdPins } = counts(steps, r.basis);
+  const failed = painFailed(); const moved = steps.filter((s) => r.z[s.sid]);
   const L: string[] = [];
   L.push(`VirtuBrain process X-ray: ${ref.proc.id} ${ref.proc.name}`);
   L.push(`${ref.fn.functionName} / ${ref.group.groupId} ${ref.group.groupName}`);
   L.push("");
-  L.push(`${total} steps sorted by who should run them:`);
-  for (const z of ZONE_ORDER) L.push(`  ${ZONES[z].label.padEnd(7)}${String(c[z]).padStart(3)} steps  ${String(pct(c[z], total)).padStart(3)}%   ${plural(p[z], "pain point")}`);
+  L.push(`${total} ${r.basis === "core" ? "core steps" : "steps"} sorted by who should run them${r.basis === "core" ? ` (${steps.length - total} standard steps not counted)` : ""}:`);
+  ZONE_ORDER.forEach((z, i) => L.push(`  ${ZONES[z].label.padEnd(7)}${String(c[z]).padStart(3)} steps  ${String(pct[i]).padStart(3)}%   ${failed ? "pain points didn't load" : `${plural(p[z], "illustrative pain point")}`}`));
+  if (r.basis === "core" && stdPins && !failed) L.push(`  ${plural(stdPins, "more illustrative pain point")} on standard steps, listed with their task.`);
   if (moved.length) L.push(`${plural(moved.length, "step")} moved by hand from the first-pass sort.`);
   for (const z of ZONE_ORDER) {
-    const list = steps.filter((s) => zoneFor(s) === z); if (!list.length) continue;
+    const list = steps.filter((s) => zoneFor(s) === z && inBasis(s, r.basis)); if (!list.length) continue;
     L.push(""); L.push(`${ZONES[z].label}: ${ZONES[z].rule}`);
-    for (const s of list) L.push(`  ${s.sid}  ${s.text}${r.z[s.sid] ? `  [moved from ${ZONES[s.call.zone].label}]` : ""}${s.pins.length ? `  [${s.pins.map((x) => `${x.severity} pain point: ${x.title}`).join("; ")}]` : ""}`);
+    for (const s of list) L.push(`  ${s.sid}  ${humanizeStep(s.text, s.taskName)}${r.z[s.sid] ? `  [moved from ${ZONES[s.call.zone].label}]` : ""}${s.pins.length ? `  [${s.pins.map((x) => `illustrative ${x.severity.toLowerCase()} pain point: ${painTitle(x)}`).join("; ")}]` : ""}`);
   }
+  if (r.basis === "core" && !failed) {
+    const sp = steps.filter((s) => s.std && s.pins.length);
+    if (sp.length) { L.push(""); L.push("Pain points on standard steps (shown at task level):"); for (const s of sp) for (const x of s.pins) L.push(`  ${s.taskId}  ${WRAPPER_WHERE[s.std!.kind]}: illustrative ${x.severity.toLowerCase()} pain point, ${painTitle(x)}`); }
+  }
+  if (failed) { L.push(""); L.push("Pain points didn't load, so none are listed."); }
   L.push("");
   L.push("A first-pass sort on the wording of each step. Use it to start the conversation, not to decide.");
   L.push(PAIN_NOTE);
-  L.push(`Open it: ${location.origin}${hrefFor({ view: "xray", fn: ref.fn.functionId, p: ref.proc.id })}`);
+  L.push(`Open it: ${shareUrl({ view: "xray", fn: ref.fn.functionId, p: ref.proc.id })}`);
   return L.join("\n");
 }

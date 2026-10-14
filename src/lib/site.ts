@@ -53,7 +53,7 @@ function initNav() {
     const probeY = nav.getBoundingClientRect().height + 2;
     let next = "dark";
     for (const el of document.elementsFromPoint(innerWidth / 2, probeY)) {
-      if (nav.contains(el)) continue;
+      if (nav.contains(el) || (el as HTMLElement).closest?.(".lnav, [data-lnav]")) continue;
       const w = (el as HTMLElement).closest?.(".w-void, .w-ink, .w-teal, .w-fog, .w-light, .w-paper, .w-navy, [data-skin]") as HTMLElement | null;
       if (w) { next = w.dataset.skin || WORLD_SKIN[[...w.classList].find((c) => c in WORLD_SKIN) || ""] || "dark"; break; }
     }

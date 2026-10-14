@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Talk to Verantis</title>
-<meta name="description" content="Tell us which process keeps breaking. A short note is enough, and we'll reply by email to set up an intro call.">
+<meta name="description" content="Tell us which process keeps breaking, or the one job you'd hand to an assistant. A short note is enough, and we'll reply by email to set up a call.">
 <meta name="theme-color" content="#06120e">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="VirtuBrain by Verantis">
 <meta property="og:title" content="Talk to Verantis">
-<meta property="og:description" content="Tell us which process keeps breaking. A short note is enough, and we'll reply by email to set up an intro call.">
+<meta property="og:description" content="Tell us which process keeps breaking, or the one job you'd hand to an assistant. A short note is enough, and we'll reply by email to set up a call.">
 <meta property="og:image" content="/og.jpg">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
@@ -19,11 +19,10 @@
 <!-- @include header -->
 <main id="main" tabindex="-1">
   <section class="ct-sec w-void" aria-labelledby="ct-title">
-    <div class="ct-glow" aria-hidden="true"><img src="/media/img/ledger-glow-1344.webp" alt="" width="1344" height="752" fetchpriority="low"></div>
     <div class="wrap ct-grid">
       <div class="ct-intro">
         <p class="eyebrow accent hl-fade" style="--li:0">Contact</p>
-        <h1 id="ct-title" class="t-h1 hl"><span class="ln" style="--li:0"><span>Tell us about the</span></span><span class="ln" style="--li:1"><span>process you want to fix.</span></span></h1>
+        <h1 id="ct-title" class="t-h1 hl"><span class="ln" style="--li:0"><span id="ct-h1a">Tell us about the</span></span> <span class="ln" style="--li:1"><span id="ct-h1b">process you want to fix.</span></span></h1>
         <p class="t-lede hl-fade" style="--li:1">A short note is enough. We'll reply by email to set up an intro call.</p>
       </div>
 
@@ -43,7 +42,7 @@
                 <p class="err" id="e-name"></p>
               </div>
               <div class="field">
-                <label for="f-email">Work email</label>
+                <label for="f-email" id="l-email">Work email</label>
                 <input class="input" id="f-email" name="email" type="email" inputmode="email" autocomplete="email" required maxlength="200" aria-describedby="e-email" spellcheck="false">
                 <p class="err" id="e-email"></p>
               </div>
@@ -92,7 +91,7 @@
                 </select>
               </div>
               <div class="field full">
-                <label for="f-message">What would you like to fix?</label>
+                <label for="f-message" id="l-message">What would you like to fix?</label>
                 <p class="hint" id="h-message">A sentence or two is enough. Name the process if you can.</p>
                 <textarea class="input" id="f-message" name="message" rows="6" required maxlength="4000" aria-describedby="h-message e-message"></textarea>
                 <p class="err" id="e-message"></p>
@@ -113,7 +112,7 @@
           <h2 class="t-h3">What happens next</h2>
           <ol class="next-steps">
             <li><b>We reply by email</b><span>We set up an intro call at a time that suits you.</span></li>
-            <li><b>We pick one process</b><span>On the call we choose where to start and what to look at first.</span></li>
+            <li id="step-2"><b>We pick one process</b><span>On the call we choose where to start and what to look at first.</span></li>
             <li><b>You get a written scope</b><span>Before any work begins, you see the scope in writing.</span></li>
           </ol>
         </div>
