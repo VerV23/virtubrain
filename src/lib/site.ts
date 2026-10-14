@@ -1,7 +1,10 @@
 /* Shared behaviour for every marketing page: header, reveals, media hydration, films.
-   Each page entry does:  import "../styles/base.css"; import { boot } from "../lib/site"; boot();  */
+   Each page entry does:  import "../styles/base.css"; import { boot } from "../lib/site"; boot();
+   Scroll-linked work anywhere on the site should register with onFrame() from ./ui so the page
+   runs one rAF loop (reads first, then writes) instead of many competing ones. */
 import { hydrateImages, hydrateLoops } from "./media";
 import { initFilms } from "./film";
+import { onFrame } from "./ui";
 
 export function boot() {
   document.documentElement.classList.add("js");
@@ -12,27 +15,50 @@ export function boot() {
   initFilms();
 }
 
+const WORLD_SKIN: Record<string, "dark" | "light" | "navy"> = {
+  "w-void": "dark", "w-ink": "dark", "w-teal": "dark", "w-fog": "light", "w-light": "light", "w-paper": "light", "w-navy": "navy",
+};
+
 function initNav() {
-  const nav = document.querySelector<HTMLElement>("[data-nav]");
+  const nav = document.querySelector<HTMLElement>("header.site-nav");
   if (!nav) return;
   const btn = nav.querySelector<HTMLButtonElement>(".nav-toggle")!;
-  const close = () => { nav.classList.remove("is-open"); btn.setAttribute("aria-expanded", "false"); document.body.style.overflow = ""; };
-  btn.addEventListener("click", () => {
-    const open = !nav.classList.contains("is-open");
-    nav.classList.toggle("is-open", open); btn.setAttribute("aria-expanded", String(open));
-    document.body.style.overflow = open ? "hidden" : "";
-  });
-  nav.querySelectorAll("#nav-links a").forEach((a) => a.addEventListener("click", close));
-  addEventListener("keydown", (e) => { if (e.key === "Escape" && nav.classList.contains("is-open")) { close(); btn.focus(); } });
+  const links = nav.querySelector<HTMLElement>("#nav-links")!;
+  const outside = () => [...document.querySelectorAll<HTMLElement>("main, footer, .lnav, [data-lnav]")].filter((el) => !nav.contains(el));
+  const setOpen = (open: boolean, restoreFocus = true) => {
+    nav.classList.toggle("is-open", open);
+    btn.setAttribute("aria-expanded", String(open));
+    btn.setAttribute("aria-label", open ? "Close menu" : "Menu");
+    document.documentElement.classList.toggle("menu-open", open);
+    outside().forEach((el) => el.toggleAttribute("inert", open));
+    if (open) links.querySelector<HTMLElement>("a")?.focus();
+    else if (restoreFocus) btn.focus();
+  };
+  btn.addEventListener("click", () => setOpen(!nav.classList.contains("is-open")));
+  links.querySelectorAll("a").forEach((a) => a.addEventListener("click", () => setOpen(false, false)));
+  addEventListener("keydown", (e) => { if (e.key === "Escape" && nav.classList.contains("is-open")) setOpen(false); });
+  matchMedia("(min-width: 861px)").addEventListener("change", (m) => { if (m.matches && nav.classList.contains("is-open")) setOpen(false, false); });
 
-  // Apple-style: the bar tucks away while reading down and returns on any upward scroll.
-  let last = scrollY;
-  addEventListener("scroll", () => {
+  // The bar tucks away while reading down and returns on any upward scroll, and takes the colour of
+  // the section beneath it (dark, light or navy) the way apple.com's bar does.
+  let last = scrollY, skin = "";
+  onFrame(() => {
     const y = scrollY;
-    if (!nav.classList.contains("is-open") && !nav.matches(":focus-within")) nav.classList.toggle("is-hidden", y > 320 && y > last + 4);
-    if (y < last - 4) nav.classList.remove("is-hidden");
+    const open = nav.classList.contains("is-open");
+    if (!open && !nav.matches(":focus-within")) {
+      if (y > 320 && y > last + 4) nav.classList.add("is-hidden");
+      else if (y < last - 4 || y <= 320) nav.classList.remove("is-hidden");
+    }
     last = y;
-  }, { passive: true });
+    const probeY = nav.getBoundingClientRect().height + 2;
+    let next = "dark";
+    for (const el of document.elementsFromPoint(innerWidth / 2, probeY)) {
+      if (nav.contains(el)) continue;
+      const w = (el as HTMLElement).closest?.(".w-void, .w-ink, .w-teal, .w-fog, .w-light, .w-paper, .w-navy, [data-skin]") as HTMLElement | null;
+      if (w) { next = w.dataset.skin || WORLD_SKIN[[...w.classList].find((c) => c in WORLD_SKIN) || ""] || "dark"; break; }
+    }
+    if (next !== skin) { skin = next; nav.dataset.skin = next; document.documentElement.dataset.navSkin = next; }
+  });
 }
 
 function initReveals() {

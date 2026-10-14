@@ -7,7 +7,7 @@ Outputs go to public/media, public/data and src/media-catalog.json. Re-running i
 import json, pathlib, subprocess, sys, shutil
 from concurrent.futures import ThreadPoolExecutor
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-M = pathlib.Path(sys.argv[1]).resolve()
+M = pathlib.Path(sys.argv[1]).resolve() if len(sys.argv) > 1 and not sys.argv[1].startswith("--") else ROOT / ".masters"
 OUT = ROOT / "public/media"; DATA = ROOT / "public/data"
 run = lambda *a: subprocess.run(a, check=True, capture_output=True)
 
@@ -126,10 +126,14 @@ def loop(i, spec):
 
 def icon(i, fid):
     src = M / "icon-cutout" / f"{i}.webp"
-    run("convert", str(src), "-trim", "+repage", "-resize", "256x256", "-background", "none", "-gravity", "center", "-extent", "288x288", "-quality", "90", str(OUT / "icons" / f"{fid}.webp"))
+    run("convert", str(src), "-trim", "+repage", "-resize", "88x88", "-background", "none", "-gravity", "center", "-extent", "96x96", "-quality", "92", str(OUT / "icons" / f"{fid}.webp"))
     return fid, f"/media/icons/{fid}.webp"
 
 if __name__ == "__main__":
+    if "--icons-only" in sys.argv:
+        (OUT / "icons").mkdir(parents=True, exist_ok=True)
+        for i, f in ICONS.items(): icon(i, f)
+        sys.exit(0)
     for p in ("img", "film", "loop", "icons"): (OUT / p).mkdir(parents=True, exist_ok=True)
     DATA.mkdir(parents=True, exist_ok=True)
     cat = {"stills": {}, "films": {}, "loops": {}, "icons": {}}

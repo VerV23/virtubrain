@@ -1,7 +1,7 @@
 import "../styles/base.css";
 import "../styles/pages.css";
 import { boot } from "../lib/site";
-import { initInner } from "./inner";
+import { initInner } from "../lib/ui";
 import { loadTaxonomy, indexTaxonomy } from "../lib/data";
 
 boot();

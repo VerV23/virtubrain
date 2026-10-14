@@ -1,0 +1,18 @@
+# Old virtubrain.ai addresses (Netlify and Cloudflare Pages read this file)
+/solutions      /business/              301
+/solutions/*    /business/              301
+/services       /enterprise/            301
+/services/*     /enterprise/            301
+/blog           /verantis/#insights     301
+/blog/*         /verantis/#insights     301
+/about          /verantis/              301
+/practice       /verantis/              301
+/practice.html  /verantis/              301
+/explore        /app/                   301
+/explore.html   /app/                   301
+/platform       /app/                   301
+/platform.html  /app/                   301
+/pain-points    /app/#view=pain         301
+/pain-points.html /app/#view=pain       301
+/approach       /enterprise/#approach   301
+/approach.html  /enterprise/#approach   301

@@ -180,3 +180,50 @@ Empty, loading and error states are designed (skeletons, retry). Load the 1 MB t
 - Verify your work: `npx vite build` must pass; then `npx vite preview` and `node scripts/qa/shoot.mjs qa-output/<you> http://127.0.0.1:4173 --pages=<yours>`
   and LOOK at the screenshots (Read the jpgs). Fix what you see. Zero console errors, zero failed requests, zero serious axe
   violations, zero horizontal overflow at 390px.
+
+## 9. Round 2 decisions (apply everywhere; these override earlier wording)
+
+Shared foundation changes already made by the lead:
+- `src/lib/site.ts`: the menu bug is fixed (it selected `<body data-nav>`); the header now auto-hides and takes a skin from the
+  section under it (`data-skin` dark | light | navy on `header.site-nav`, also mirrored on `<html data-nav-skin>`). Give any
+  non-world element a skin with `data-skin`. When the menu is open, `main`, `footer` and local navs get `inert`.
+- `src/pages/inner.ts` moved to **`src/lib/ui.ts`** and is now the shared UI library for ALL pages (home included):
+  `onFrame` (the one rAF scroll/resize loop: register all scroll-linked work here), `initLocalNav`, `initGalleries`, `initTabs`,
+  `initFaq`, `initCounts` (real number in HTML + sr-only), `initLines`, `initScrub`, `initSteps`, `initInk`, `initCopy`. Use these
+  instead of private re-implementations so motion and components are identical across pages.
+- `src/lib/film.ts`: beats are never `inert` (text always stays in the accessibility tree; links in a faded beat leave the tab order
+  and the beat gets `.is-off`). Frames load in two phases (key frames when near, the rest when the reader arrives or the page is
+  idle); Save-Data or slow connections get the poster only (`.film.is-poster-only`); the frame set upgrades on resize; `--bg`
+  is cached. Films register with `onFrame`.
+- `base.css`: `.loop-toggle` styles are global; header blur moved to `::before`; world selector is explicit; reveals have no blur.
+- `tokens.css`: `--fg-3` now passes 4.6:1 on every surface in every world; fog accent is `#0a6a5c`.
+- SEO: canonical, absolute OG image, Twitter tags and JSON-LD are injected at build (vite `seo()` plugin) from each page's
+  `<title>` and meta description, so keep titles <= 60 characters and descriptions 120-155 characters. `robots.txt`,
+  `sitemap.xml`, `_redirects` (301s for old URLs), `_headers` (caching), `netlify.toml`, `vercel.json` exist in the repo.
+- Function icons are now 96px (`/media/icons/<id>.webp`), still masks.
+
+Content and honesty conventions (all pages and the app):
+- **US English** everywhere (organization, modeled, center, program, practice as verb and noun, analyze, prioritize).
+- Say **"362 illustrative failure points"** or "362 typical failure points", never "known". Wherever a pain-point record or count
+  appears, an "Illustrative" label is visible in the same card or line, not a screen away. On marketing pages do not show the
+  numeric impact sentences ("an estimated 14 hours", "20% of cases"); show title, category, severity and the step path. In the app,
+  every record shows an "Illustrative" chip and its impact line starts with "Illustrative estimate."
+- **Do not overclaim the steps.** The honest description: 142 processes broken into 295 activities, 590 tasks and 2,965 steps;
+  13 flagship processes carry curated step detail; the rest follow a standard step pattern (receive, prepare, do, check, decide,
+  hand off) that an engagement replaces with the client's own steps. Lead the proof with what is genuinely rich: every process has
+  notes for 6 industries and 3 countries (852 industry notes and 426 country notes), typical systems and KPIs. Do not say
+  "VirtuBrain maps all 2,965 of them" or "opens all the way down to the step" without that qualification.
+- Process codes repeat across functions (9.x appears in Marketing/CX, Retail-Specific Operations and Asset & Facilities). Wherever a
+  code is shown, show the function name with it, never two same-looking codes side by side without context, and always include
+  `fn=` in links.
+- Exact offer names everywhere: "Agentic Close Assurance", "Agentic Supplier Invoice and Payment", "Agent Governance Design",
+  "Team Enablement". Industry label "Hotel and hospitality" everywhere (use `INDUSTRIES`).
+- Principle 06 everywhere: **"One process first."** "Prove it on one close or one invoice flow, then widen."
+- No track-record claims ("most clients...", "examples from our zone maps"). Use "We suggest starting with the close." and
+  "An example zone map. Yours comes out of the diagnostic."
+- Agentic Close Assurance carries the line: "This is not an audit or assurance engagement. Your auditors test the controls; we
+  build them and the evidence."
+- Enterprise FAQ adds (flagged to the client for confirmation): "What happens to our data?" -> "We agree data access, where agents
+  run and how evidence is stored in the written scope, before anyone touches your systems." and "How is it priced?" -> "We quote in
+  writing after the first call, against the scope we agree. No quote depends on promised savings."
+- The zone story in one line: "Sort each step by how its output can be checked."

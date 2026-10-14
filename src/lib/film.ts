@@ -17,20 +17,27 @@
    of their window and out over the last 6% (data-fade overrides). The section exposes
    --p (0..1) so CSS can react, and dispatches "film:progress" events with {detail: p}.
    Frames load progressively (every 8th, then 4th, 2nd, all) so scrubbing works before the set
-   finishes. With prefers-reduced-motion the poster and all beats show statically. */
+   finishes. With prefers-reduced-motion the poster and all beats show statically. With Save-Data or a
+   slow connection only the poster is used (beats still work). Beat text is never removed from the
+   accessibility tree; controls inside a faded beat leave the tab order (class .is-off is set). */
 
 import catalog from "../media-catalog.json";
+import { onFrame } from "./ui";
 
 type FilmMeta = { frames: number; base: string; desktop: number; mobile: number };
 const FILMS = catalog.films as Record<string, FilmMeta>;
 const reduce = matchMedia("(prefers-reduced-motion: reduce)");
 
+const conn = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
+const lowData = !!conn && (conn.saveData === true || ["slow-2g", "2g", "3g"].includes(conn.effectiveType || ""));
+type FrameSet = { imgs: (HTMLImageElement | undefined)[]; queued: Set<number> };
+
 class Film {
-  el: HTMLElement; canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D;
-  meta: FilmMeta; imgs: (HTMLImageElement | undefined)[] = []; ready: boolean[] = [];
-  beats: { el: HTMLElement; a: number; b: number; f: number }[] = [];
-  bar: HTMLElement | null; p = 0; drawn = -1; set: "d" | "m"; started = false; raf = 0;
-  fit: "cover" | "contain"; focusX: number; focusY: number;
+  el: HTMLElement; canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D; meta: FilmMeta;
+  sets: Record<"d" | "m", FrameSet> = { d: { imgs: [], queued: new Set() }, m: { imgs: [], queued: new Set() } };
+  beats: { el: HTMLElement; a: number; b: number; f: number; vis: boolean; focusables: HTMLElement[] }[] = [];
+  bar: HTMLElement | null; p = -1; drawn = -1; drawnSet = ""; set: "d" | "m"; phase = 0; inflight = 0; queue: number[] = [];
+  fit: "cover" | "contain"; focusX: number; focusY: number; bg = "#000";
 
   constructor(el: HTMLElement) {
     this.el = el;
@@ -41,70 +48,106 @@ class Film {
     this.fit = (el.dataset.fit as "cover" | "contain") || "cover";
     this.focusX = parseFloat(el.dataset.focusX || "0.5");
     this.focusY = parseFloat(el.dataset.focusY || "0.5");
-    this.set = innerWidth * Math.min(devicePixelRatio, 2) > 1100 ? "d" : "m";
+    this.set = this.wantSet();
     this.beats = [...el.querySelectorAll<HTMLElement>(".beat")].map((b) => ({
-      el: b, a: parseFloat(b.dataset.in || "0"), b: parseFloat(b.dataset.out || "1"), f: parseFloat(b.dataset.fade || "0.06"),
+      el: b, a: parseFloat(b.dataset.in || "0"), b: parseFloat(b.dataset.out || "1"), f: parseFloat(b.dataset.fade || "0.06"), vis: true,
+      focusables: [...b.querySelectorAll<HTMLElement>("a[href], button, input, select, textarea, [tabindex]")],
     }));
+    this.readBg();
     new ResizeObserver(() => this.resize()).observe(this.canvas);
-    new IntersectionObserver((es) => es[0].isIntersecting && this.start(), { rootMargin: "150% 0px" }).observe(el);
+    if (lowData) { el.classList.add("is-poster-only"); return; }
+    // phase 1 (a sparse key-frame set) when the film is near; phase 2 (everything) once the reader arrives or the page is idle
+    new IntersectionObserver((es) => es[0].isIntersecting && this.load(1), { rootMargin: "100% 0px" }).observe(el);
   }
 
-  src(i: number) { return `${this.meta.base}/${this.set}/${String(i).padStart(3, "0")}.webp`; }
+  wantSet(): "d" | "m" { return innerWidth * Math.min(devicePixelRatio || 1, 2) > 1100 ? "d" : "m"; }
+  readBg() { this.bg = getComputedStyle(this.el).getPropertyValue("--bg").trim() || "#000"; }
+  src(set: string, i: number) { return `${this.meta.base}/${set}/${String(i).padStart(3, "0")}.webp`; }
 
-  start() {
-    if (this.started) return;
-    this.started = true;
-    const N = this.meta.frames;
-    const order: number[] = [];
-    for (const step of [8, 4, 2, 1]) for (let i = 0; i < N; i += step) if (!order.includes(i)) order.push(i);
-    if (!order.includes(N - 1)) order.splice(1, 0, N - 1);
-    let k = 0;
-    const next = () => {
-      if (k >= order.length) return;
-      const i = order[k++];
-      const im = new Image(); im.decoding = "async"; im.src = this.src(i);
-      im.decode().then(() => { this.imgs[i] = im; this.ready[i] = true; if (Math.abs(i - this.target()) < 6 || this.drawn < 0) this.draw(true); })
-        .catch(() => {}).finally(next);
-    };
-    for (let c = 0; c < 6; c++) next();
-  }
-
-  target() { return Math.round(this.p * (this.meta.frames - 1)); }
-
-  nearest(t: number) {
-    if (this.ready[t]) return t;
-    for (let d = 1; d < this.meta.frames; d++) {
-      if (this.ready[t - d]) return t - d;
-      if (this.ready[t + d]) return t + d;
+  load(phase: number) {
+    if (phase <= this.phase) return;
+    this.phase = phase;
+    const N = this.meta.frames, fs = this.sets[this.set];
+    if (phase === 1) {
+      const order = [0, N - 1];
+      for (let i = 8; i < N - 1; i += 8) order.push(i);
+      this.queue.push(...order.filter((i) => !fs.queued.has(i)));
+      const idle = (window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => void }).requestIdleCallback;
+      setTimeout(() => (idle ? idle(() => this.load(2), { timeout: 4000 }) : this.load(2)), 2500);
+    } else {
+      // everything else, nearest to where the reader is first
+      const t = this.target();
+      const rest = [...Array(N).keys()].filter((i) => !fs.queued.has(i) && !this.queue.includes(i)).sort((a, b) => Math.abs(a - t) - Math.abs(b - t));
+      this.queue.push(...rest);
     }
-    return -1;
+    this.pump();
+  }
+
+  pump() {
+    const fs = this.sets[this.set], set = this.set;
+    while (this.inflight < 4 && this.queue.length) {
+      const i = this.queue.shift()!;
+      if (fs.queued.has(i)) continue;
+      fs.queued.add(i); this.inflight++;
+      const im = new Image(); im.decoding = "async"; im.src = this.src(set, i);
+      im.decode().then(() => { fs.imgs[i] = im; if (set === this.set && (Math.abs(i - this.target()) < 4 || this.drawn < 0)) this.draw(true); })
+        .catch(() => fs.queued.delete(i))
+        .finally(() => { this.inflight--; this.pump(); });
+    }
+  }
+
+  target() { return Math.round(Math.max(0, this.p) * (this.meta.frames - 1)); }
+
+  pick(t: number): HTMLImageElement | undefined {
+    // nearest decoded frame in the preferred set, then fall back to the other set while it loads
+    for (const key of [this.set, this.set === "d" ? "m" : "d"] as const) {
+      const imgs = this.sets[key].imgs;
+      if (imgs[t]) { this.drawnSet = key; return imgs[t]; }
+      for (let d = 1; d < this.meta.frames; d++) {
+        if (imgs[t - d]) { this.drawnSet = key; return imgs[t - d]; }
+        if (imgs[t + d]) { this.drawnSet = key; return imgs[t + d]; }
+      }
+    }
+    return undefined;
   }
 
   resize() {
     const r = this.canvas.getBoundingClientRect();
     const dpr = Math.min(devicePixelRatio || 1, 2);
     this.canvas.width = Math.round(r.width * dpr); this.canvas.height = Math.round(r.height * dpr);
+    this.readBg();
+    const want = this.wantSet();
+    if (want === "d" && this.set === "m" && !lowData) { this.set = "d"; const ph = this.phase; this.phase = 0; this.queue = []; if (ph) this.load(Math.min(ph, 2)); if (ph >= 2) this.load(2); }
     this.draw(true);
   }
 
   draw(force = false) {
-    const i = this.nearest(this.target());
-    if (i < 0 || (!force && i === this.drawn)) return;
-    const im = this.imgs[i]!; const { width: W, height: H } = this.canvas;
+    const t = this.target();
+    if (!force && t === this.drawn) return;
+    const im = this.pick(t);
+    if (!im) return;
+    const { width: W, height: H } = this.canvas;
+    if (!W || !H) return;
     const s = this.fit === "cover" ? Math.max(W / im.naturalWidth, H / im.naturalHeight) : Math.min(W / im.naturalWidth, H / im.naturalHeight);
     const w = im.naturalWidth * s, h = im.naturalHeight * s;
-    this.ctx.fillStyle = getComputedStyle(this.el).getPropertyValue("--bg") || "#000";
+    this.ctx.fillStyle = this.bg;
     this.ctx.fillRect(0, 0, W, H);
     this.ctx.drawImage(im, (W - w) * this.focusX, (H - h) * this.focusY, w, h);
-    this.drawn = i;
+    this.drawn = t;
     if (!this.el.classList.contains("is-live")) this.el.classList.add("is-live");
   }
 
-  update() {
+  /* read phase */
+  measure() {
     const r = this.el.getBoundingClientRect();
     const span = r.height - innerHeight;
-    const p = span > 0 ? Math.min(1, Math.max(0, -r.top / span)) : 0;
-    if (p === this.p && this.drawn >= 0) return;
+    return { p: span > 0 ? Math.min(1, Math.max(0, -r.top / span)) : 0, near: r.top < innerHeight && r.bottom > 0 };
+  }
+
+  /* write phase */
+  apply(p: number, near: boolean) {
+    if (near && this.phase < 2 && !lowData) this.load(2);
+    if (p === this.p) return;
     this.p = p;
     this.el.style.setProperty("--p", p.toFixed(4));
     if (this.bar) this.bar.style.setProperty("--p", p.toFixed(4));
@@ -114,10 +157,16 @@ class Film {
       const fadeOut = b.b >= 1 ? 1 : (b.b - p) / b.f;
       const o = p < b.a || p > b.b ? 0 : Math.max(0, Math.min(1, fadeIn, fadeOut));
       b.el.style.setProperty("--o", o.toFixed(3));
-      b.el.toggleAttribute("inert", o < 0.5);
+      // text stays in the accessibility tree at all times; only controls in a faded beat leave the tab order
+      const vis = o >= 0.5;
+      if (vis !== b.vis) {
+        b.vis = vis;
+        b.el.classList.toggle("is-off", !vis);
+        b.focusables.forEach((f) => (vis ? f.removeAttribute("tabindex") : f.setAttribute("tabindex", "-1")));
+      }
     }
     this.el.dispatchEvent(new CustomEvent("film:progress", { detail: p }));
-    this.draw();
+    if (!lowData) this.draw();
   }
 }
 
@@ -126,11 +175,9 @@ export function initFilms(root: ParentNode = document) {
   if (!films.length) return [];
   if (reduce.matches) { films.forEach((f) => f.classList.add("is-static")); return []; }
   const list = films.filter((f) => FILMS[f.dataset.film!]).map((f) => new Film(f));
-  let ticking = false;
-  const tick = () => { ticking = false; list.forEach((f) => f.update()); };
-  const onScroll = () => { if (!ticking) { ticking = true; requestAnimationFrame(tick); } };
-  addEventListener("scroll", onScroll, { passive: true });
-  addEventListener("resize", onScroll);
-  tick();
+  onFrame(() => {
+    const m = list.map((f) => f.measure());   // all reads first
+    list.forEach((f, i) => f.apply(m[i].p, m[i].near)); // then all writes
+  });
   return list;
 }

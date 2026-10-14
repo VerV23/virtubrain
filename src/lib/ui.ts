@@ -1,4 +1,5 @@
-/* Shared behaviour for the inner pages (/enterprise/, /business/, /verantis/, /contact/, 404).
+/* Shared UI behaviours for every page (local nav, galleries, tabs, FAQ, count-ups, line reveals,
+   scroll-linked scale, steps, ink reading effect, copy buttons). Originally built for the inner pages.
    Every enhancement is progressive: the HTML is complete and readable without it, and
    prefers-reduced-motion turns the motion off while keeping the interactions. */
 
@@ -9,7 +10,7 @@ const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
 /* one rAF-throttled scroll/resize loop shared by every scroll-linked effect */
 const subs = new Set<() => void>();
 let ticking = false;
-function onFrame(fn: () => void) {
+export function onFrame(fn: () => void) {
   if (!subs.size) {
     const run = () => { ticking = false; subs.forEach((f) => f()); };
     const req = () => { if (!ticking) { ticking = true; requestAnimationFrame(run); } };
