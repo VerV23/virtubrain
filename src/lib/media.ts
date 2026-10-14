@@ -54,12 +54,14 @@ export function hydrateLoops(root: ParentNode = document) {
     if (reduce) return;
     let userPaused = false;
     const btn = document.createElement("button");
-    btn.type = "button"; btn.className = "loop-toggle"; btn.setAttribute("aria-label", "Pause background video");
+    btn.type = "button"; btn.className = "loop-toggle";
+    const what = (v.dataset.label || l.alt.replace(/\.$/, "")).toLowerCase();
+    btn.setAttribute("aria-label", `Pause video: ${what}`);
     btn.innerHTML = `<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="4" y="3" width="2.6" height="10" rx="1"/><rect x="9.4" y="3" width="2.6" height="10" rx="1"/></svg>`;
     btn.addEventListener("click", () => {
       userPaused = !v.paused;
-      if (userPaused) { v.pause(); btn.setAttribute("aria-label", "Play background video"); btn.classList.add("paused"); }
-      else { v.play().catch(() => {}); btn.setAttribute("aria-label", "Pause background video"); btn.classList.remove("paused"); }
+      if (userPaused) { v.pause(); btn.setAttribute("aria-label", `Play video: ${what}`); btn.classList.add("paused"); }
+      else { v.play().catch(() => {}); btn.setAttribute("aria-label", `Pause video: ${what}`); btn.classList.remove("paused"); }
     });
     v.after(btn);
     new IntersectionObserver(([e]) => {
