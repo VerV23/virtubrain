@@ -1,0 +1,442 @@
+<title>VirtuBrain</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: left-aligned ledger grid. Hero pairs the thesis with a live zone map; offers read as ledger rows, not cards. */
+:root{
+  --paper:#F3F5F8; --surface:#FFFFFF; --ink:#0E1B33; --ink-2:#47536B; --line:#D5DBE6;
+  --brass:#8A5F12; --btn-bg:#0E1B33; --btn-fg:#F3F5F8;
+  --auto:#0F7A6C; --assist:#2F5FD0; --human:#6B3FA0;
+  --display:"Bricolage Grotesque","Avenir Next","Segoe UI",system-ui,sans-serif;
+  --body:"IBM Plex Sans","Segoe UI",system-ui,-apple-system,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --gutter:clamp(16px,4vw,40px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#0B1424; --surface:#121E33; --ink:#E9EEF7; --ink-2:#A3B0C6; --line:#26344D;
+    --brass:#D9A94E; --btn-bg:#E9EEF7; --btn-fg:#0B1424;
+    --auto:#3CC2AE; --assist:#7FA2FF; --human:#B694E8; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0B1424; --surface:#121E33; --ink:#E9EEF7; --ink-2:#A3B0C6; --line:#26344D;
+  --brass:#D9A94E; --btn-bg:#E9EEF7; --btn-fg:#0B1424;
+  --auto:#3CC2AE; --assist:#7FA2FF; --human:#B694E8; color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:border-box}
+[hidden]{display:none!important}
+html{scroll-behavior:smooth;scroll-padding-top:84px}
+body{margin:0;background:var(--paper);color:var(--ink);font:400 17px/1.6 var(--body);-webkit-font-smoothing:antialiased}
+img,svg{max-width:100%}
+a{color:inherit}
+h1,h2,h3,p,ul,ol{margin:0}
+ul,ol{padding:0;list-style:none}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;letter-spacing:-.015em}
+h1{font-size:clamp(2.3rem,5.2vw,3.7rem);line-height:1.04;font-weight:700}
+h2{font-size:clamp(1.7rem,3.2vw,2.4rem);line-height:1.12;font-weight:700}
+h3{font-size:1.2rem;line-height:1.25;font-weight:700}
+:focus-visible{outline:2px solid var(--brass);outline-offset:3px}
+.wrap{max-width:1140px;margin-inline:auto;padding-inline:var(--gutter)}
+.sec{padding-block:clamp(56px,8vw,96px);border-top:1px solid var(--line)}
+.eyebrow{font:500 .76rem/1.4 var(--mono);letter-spacing:.09em;text-transform:uppercase;color:var(--brass)}
+.lede{font-size:1.14rem;color:var(--ink-2);max-width:60ch}
+.head{display:grid;gap:14px;margin-bottom:40px;max-width:720px}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:13px 20px;border-radius:2px;border:1px solid var(--btn-bg);
+  background:var(--btn-bg);color:var(--btn-fg);font:600 1rem/1.2 var(--body);text-decoration:none;cursor:pointer}
+.btn:hover{opacity:.88}
+.btn.ghost{background:transparent;color:var(--ink);border-color:var(--ink)}
+.link{font-weight:600;text-decoration:underline;text-decoration-color:var(--brass);text-underline-offset:4px;text-decoration-thickness:2px}
+
+/* header */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:10;background:var(--paper);border-bottom:1px solid var(--line)}
+.top .wrap{display:flex;align-items:center;justify-content:space-between;gap:20px;min-height:64px;flex-wrap:wrap}
+.brand{display:inline-flex;align-items:center;gap:10px;text-decoration:none;font:700 1.25rem/1 var(--display);letter-spacing:-.02em}
+.mark{width:24px;height:24px;flex:none}
+.nav{display:flex;align-items:center;gap:26px}
+.nav a{text-decoration:none;font-size:.96rem;font-weight:500}
+.nav a:not(.btn):hover{color:var(--brass)}
+.nav .btn{padding:10px 16px}
+.menu{display:none;background:none;border:1px solid var(--line);border-radius:2px;color:var(--ink);font:500 .9rem var(--body);padding:8px 12px;cursor:pointer}
+@media (max-width:900px){
+  .menu{display:inline-block}
+  .nav{display:none;flex-basis:100%;flex-direction:column;align-items:flex-start;gap:16px;padding-bottom:20px}
+  .top.open .nav{display:flex}
+}
+
+/* hero */
+.hero{padding-block:clamp(40px,6vw,76px)}
+.hero .wrap{display:grid;grid-template-columns:minmax(0,.92fr) minmax(0,1.08fr);gap:clamp(28px,5vw,60px);align-items:start}
+.hero-copy{display:grid;gap:22px;min-width:0}
+.dbl{border-bottom:5px double var(--brass);padding-bottom:1px}
+.cta{display:flex;flex-wrap:wrap;gap:12px}
+@media (max-width:980px){.hero .wrap{grid-template-columns:minmax(0,1fr)}}
+
+/* zone map */
+.zm{background:var(--surface);border:1px solid var(--line);border-radius:2px;min-width:0}
+.zm-top{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--line)}
+.zm-title{font:500 .76rem var(--mono);letter-spacing:.09em;text-transform:uppercase;color:var(--ink-2)}
+.tabs{display:flex;flex-wrap:wrap;gap:6px}
+.tabs button{font:500 .86rem var(--body);padding:7px 11px;border-radius:2px;border:1px solid var(--line);background:transparent;color:var(--ink);cursor:pointer}
+.tabs button[aria-pressed="true"]{background:var(--btn-bg);color:var(--btn-fg);border-color:var(--btn-bg)}
+.zones{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
+.zone{padding:16px;min-width:0;display:grid;gap:12px;align-content:start}
+.zone + .zone{border-left:1px solid var(--line)}
+.zone h3{font:500 .78rem var(--mono);letter-spacing:.09em;text-transform:uppercase;display:flex;align-items:center;gap:8px}
+.zone h3::before{content:"";width:10px;height:10px;background:var(--z);flex:none}
+.zone .rule{font-size:.86rem;line-height:1.45;color:var(--ink-2);padding-bottom:12px;border-bottom:2px solid var(--z)}
+.zone li{display:grid;gap:3px;padding-block:9px;border-bottom:1px solid var(--line)}
+.zone li:last-child{border-bottom:0}
+.zone b{font-weight:600;font-size:.95rem;line-height:1.3}
+.zone span{font:400 .74rem/1.45 var(--mono);color:var(--ink-2)}
+.zm-foot{padding:10px 16px;border-top:1px solid var(--line);font-size:.82rem;color:var(--ink-2)}
+@media (max-width:640px){
+  .zones{grid-template-columns:minmax(0,1fr)}
+  .zone + .zone{border-left:0;border-top:1px solid var(--line)}
+}
+
+/* two doors */
+.doors{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
+.door{background:var(--surface);border:1px solid var(--line);border-radius:2px;padding:clamp(22px,3vw,34px);display:grid;gap:16px;align-content:start;min-width:0}
+.ticks{display:grid;gap:8px;color:var(--ink-2)}
+.ticks li{padding-left:20px;position:relative}
+.ticks li::before{content:"";position:absolute;left:0;top:.72em;width:9px;height:2px;background:var(--brass)}
+@media (max-width:760px){.doors{grid-template-columns:minmax(0,1fr)}}
+
+/* ledger rows */
+.rows{border-top:2px solid var(--ink)}
+.row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.5fr) minmax(0,1.2fr);gap:14px 32px;padding-block:28px;border-bottom:1px solid var(--line)}
+.row > *{min-width:0}
+.row .tag{font:500 .74rem var(--mono);letter-spacing:.09em;text-transform:uppercase;color:var(--brass);display:block;margin-bottom:8px}
+.row p{color:var(--ink-2)}
+.row .get{font-size:.94rem}
+.row .get strong{display:block;font:500 .74rem var(--mono);letter-spacing:.09em;text-transform:uppercase;color:var(--ink-2);margin-bottom:8px}
+@media (max-width:860px){.row{grid-template-columns:minmax(0,1fr)}}
+
+/* columns */
+.cols{display:grid;gap:32px;grid-template-columns:repeat(var(--n,3),minmax(0,1fr))}
+.col{display:grid;gap:10px;align-content:start;padding-top:18px;border-top:2px solid var(--ink);min-width:0}
+.col p{color:var(--ink-2)}
+.col .n{font:500 .8rem var(--mono);color:var(--brass)}
+@media (max-width:860px){.cols{grid-template-columns:minmax(0,1fr)}}
+.starts{margin-top:40px;padding:22px 24px;background:var(--surface);border:1px solid var(--line);border-radius:2px;display:grid;gap:10px}
+
+/* about + contact */
+.split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:clamp(28px,5vw,64px)}
+.split > *{min-width:0;display:grid;gap:18px;align-content:start}
+.split p{color:var(--ink-2);max-width:60ch}
+.who{padding-top:18px;border-top:1px solid var(--line);display:grid;gap:6px}
+.who b{font:700 1.1rem var(--display);color:var(--ink)}
+.princ{display:grid}
+.princ li{padding-block:16px;border-bottom:1px solid var(--line);display:grid;gap:4px}
+.princ li:first-child{border-top:2px solid var(--ink)}
+.princ b{font-weight:600}
+.princ span{color:var(--ink-2);font-size:.96rem}
+@media (max-width:860px){.split{grid-template-columns:minmax(0,1fr)}}
+.mail{display:flex;flex-wrap:wrap;align-items:center;gap:10px;font:500 1rem var(--mono);color:var(--ink)}
+.mail button{font:500 .8rem var(--body);padding:5px 10px;border:1px solid var(--line);border-radius:2px;background:transparent;color:var(--ink);cursor:pointer}
+form{display:grid;gap:16px;background:var(--surface);border:1px solid var(--line);border-radius:2px;padding:clamp(20px,3vw,30px)}
+label{display:grid;gap:6px;font-size:.92rem;font-weight:500}
+input,select,textarea{font:400 1rem var(--body);color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:2px;padding:11px 12px;width:100%}
+textarea{min-height:120px;resize:vertical}
+.status{font-size:.94rem;color:var(--ink-2);min-height:1.4em}
+.small{font-size:.86rem;color:var(--ink-2)}
+
+footer{border-top:1px solid var(--line);padding-block:32px;font-size:.9rem;color:var(--ink-2)}
+footer .wrap{display:flex;flex-wrap:wrap;gap:12px 28px;justify-content:space-between;align-items:center}
+footer nav{display:flex;flex-wrap:wrap;gap:20px}
+footer a{text-decoration:none}
+footer a:hover{color:var(--ink)}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+</style>
+<!--BODY-->
+<header class="top" id="top">
+  <div class="wrap">
+    <a class="brand" href="#top" aria-label="VirtuBrain home">
+      <svg class="mark" viewBox="0 0 24 24" aria-hidden="true"><rect x="1" y="2" width="22" height="5" fill="var(--auto)"/><rect x="1" y="9.5" width="15" height="5" fill="var(--assist)"/><rect x="1" y="17" width="8" height="5" fill="var(--human)"/></svg>
+      VirtuBrain
+    </a>
+    <button class="menu" id="menu" type="button" aria-expanded="false" aria-controls="nav">Menu</button>
+    <nav class="nav" id="nav" aria-label="Main">
+      <a href="#enterprise">Enterprise</a>
+      <a href="#small-business">Small business</a>
+      <a href="#approach">Approach</a>
+      <a href="#insights">Insights</a>
+      <a href="#about">About</a>
+      <a class="btn" href="#contact">Book a call</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+<section class="hero">
+  <div class="wrap">
+    <div class="hero-copy">
+      <p class="eyebrow">AI-enabled process reinvention · Philippines and Southeast Asia</p>
+      <h1>Put AI agents on the work that can be <span class="dbl">checked</span>.</h1>
+      <p class="lede">VirtuBrain redesigns finance, HR and customer operations around AI agents, and builds the controls that let you trust them. We work with shared-services leaders and with growing businesses.</p>
+      <div class="cta">
+        <a class="btn" href="#contact">Book an intro call</a>
+        <a class="btn ghost" href="#paths">Find your starting point</a>
+      </div>
+    </div>
+
+    <div class="zm" aria-labelledby="zm-title">
+      <div class="zm-top">
+        <span class="zm-title" id="zm-title">Zone map</span>
+        <div class="tabs" id="zm-tabs" role="group" aria-label="Choose a process"></div>
+      </div>
+      <div class="zones" id="zm-zones" aria-live="polite"></div>
+      <p class="zm-foot">An illustrative map. Yours comes out of the diagnostic, step by step, with your team.</p>
+    </div>
+  </div>
+</section>
+
+<section class="sec" id="paths">
+  <div class="wrap">
+    <div class="head">
+      <p class="eyebrow">Two ways in</p>
+      <h2>Which one sounds like you?</h2>
+    </div>
+    <div class="doors">
+      <article class="door">
+        <p class="eyebrow">Finance and shared-services leaders</p>
+        <h3>You run a close, a payables operation or a service center, and you need agents your auditors will accept.</h3>
+        <ul class="ticks">
+          <li>Record-to-report, procure-to-pay and order-to-cash</li>
+          <li>Controls and evidence designed in from the first pilot</li>
+          <li>Teams trained to work alongside agents</li>
+        </ul>
+        <a class="link" href="#enterprise">See enterprise work</a>
+      </article>
+      <article class="door">
+        <p class="eyebrow">Small and mid-sized businesses</p>
+        <h3>You want an assistant that answers customers or staff properly, without hiring a tech team.</h3>
+        <ul class="ticks">
+          <li>Answers drawn from your own records and documents</li>
+          <li>Clear handover to a person when a person should decide</li>
+          <li>One job done well before adding the next</li>
+        </ul>
+        <a class="link" href="#small-business">See assistants</a>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section class="sec" id="enterprise">
+  <div class="wrap">
+    <div class="head">
+      <p class="eyebrow">Enterprise finance and shared services</p>
+      <h2>Start with one process and prove it under audit conditions.</h2>
+      <p class="lede">Each engagement is bounded: one entity, one country or one team. You see agents working on your own data, with every check logged, before you decide what to scale.</p>
+    </div>
+    <div class="rows">
+      <article class="row">
+        <div><span class="tag">100 days</span><h3>Agentic Close Assurance</h3></div>
+        <p>One entity, one close. We map the close into zones, put agents on the reconciliations and matching that can be checked against records, and build the evidence trail your controller and auditors will test.</p>
+        <div class="get"><strong>You get</strong><ul class="ticks"><li>A zone map of your close</li><li>Agent-run reconciliations with logged checks</li><li>A control matrix ready for audit testing</li><li>A runbook and handover to your team</li></ul></div>
+      </article>
+      <article class="row">
+        <div><span class="tag">Pilot</span><h3>Agentic Supplier Invoice and Payment</h3></div>
+        <p>Invoice intake through payment proposal for one country or business unit. Agents capture, code and match. Exceptions go to analysts with the reason attached.</p>
+        <div class="get"><strong>You get</strong><ul class="ticks"><li>A country exception inventory</li><li>Matching and tolerance rules</li><li>An exception queue design</li><li>Before-and-after measures from your own data</li></ul></div>
+      </article>
+      <article class="row">
+        <div><span class="tag">Framework</span><h3>Agent Governance Design</h3></div>
+        <p>For teams that already have agents or copilots in production and need to show they are under control. Autonomy is set by how verifiable the work is, and each agent action leaves defined evidence.</p>
+        <div class="get"><strong>You get</strong><ul class="ticks"><li>Autonomy tiers by process step</li><li>An evidence and logging standard</li><li>Roles for review and override</li><li>A pack internal audit can work from</li></ul></div>
+      </article>
+      <article class="row">
+        <div><span class="tag">Training</span><h3>Team Enablement</h3></div>
+        <p>Practical AI fluency for finance, HR and shared-services teams. People practice on their own work, in tiers, with coaching on what they actually write.</p>
+        <div class="get"><strong>You get</strong><ul class="ticks"><li>A tiered curriculum by role</li><li>Hands-on practice with feedback</li><li>A leader briefing on agentic operating models</li></ul></div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section class="sec" id="small-business">
+  <div class="wrap">
+    <div class="head">
+      <p class="eyebrow">Small and mid-sized businesses</p>
+      <h2>An assistant that knows your business and knows when to hand over.</h2>
+      <p class="lede">We build each assistant on your own documents and systems, test it with your team, and set the rules for when it passes a conversation to a person.</p>
+    </div>
+    <div class="cols">
+      <article class="col"><h3>Customer support assistant</h3><p>Answers questions about orders, bookings, prices and policies from your own records, on your website or chat channels, at any hour.</p></article>
+      <article class="col"><h3>Staff help desk assistant</h3><p>Answers HR and operations questions from your handbook and policies, so managers stop answering the same question twice.</p></article>
+      <article class="col"><h3>Booking and order assistant</h3><p>Takes bookings, confirms orders and sends updates, connected to the calendar or order system you already use.</p></article>
+    </div>
+    <div class="starts">
+      <h3>How it starts</h3>
+      <ul class="ticks">
+        <li>One call to choose the first job for the assistant</li>
+        <li>A written scope before any work begins</li>
+        <li>A working assistant your team has tested before customers see it</li>
+      </ul>
+      <p><a class="link" href="#contact">Tell us what you need</a></p>
+    </div>
+  </div>
+</section>
+
+<section class="sec" id="approach">
+  <div class="wrap">
+    <div class="head">
+      <p class="eyebrow">Approach</p>
+      <h2>Four steps, the same for a global close or a shop's help desk.</h2>
+    </div>
+    <ol class="cols" style="--n:4">
+      <li class="col"><span class="n">01</span><h3>Diagnose</h3><p>We walk the process with the people who run it and measure it with your data.</p></li>
+      <li class="col"><span class="n">02</span><h3>Zone</h3><p>Each step goes into the auto, assist or human zone, by how its output can be checked.</p></li>
+      <li class="col"><span class="n">03</span><h3>Pilot</h3><p>Agents go live on one bounded slice, with checks logged from the first day.</p></li>
+      <li class="col"><span class="n">04</span><h3>Hand over</h3><p>Your team gets the map, the controls and the runbook, and decides what to scale next.</p></li>
+    </ol>
+  </div>
+</section>
+
+<section class="sec" id="insights">
+  <div class="wrap">
+    <div class="head">
+      <p class="eyebrow">Insights</p>
+      <h2>Three ideas behind the work.</h2>
+    </div>
+    <div class="cols">
+      <article class="col"><h3>The verifiability gradient</h3><p>How much autonomy an agent gets should follow how easily its work can be checked. A reconciliation either ties to the ledger or it doesn't, so an agent can own it. A provision depends on judgment, so a person signs it. Most processes contain both kinds of step, which is why blanket rules about AI in finance fail in practice.</p></article>
+      <article class="col"><h3>Token-bound capacity</h3><p>Shared services has always scaled by headcount: more volume, more seats. Agent capacity scales with compute. That changes how a service center prices work, plans peaks such as quarter-end, and writes service levels. Leaders who keep planning in seats will under-use what they have already paid for.</p></article>
+      <article class="col"><h3>The continuous close</h3><p>Month-end is a batch because checking used to be expensive. When agents reconcile and match every day, with evidence attached, most of the close is done before the period ends. What remains for the last days is the part that deserves a controller's attention: judgment, explanation and sign-off.</p></article>
+    </div>
+  </div>
+</section>
+
+<section class="sec" id="about">
+  <div class="wrap split">
+    <div>
+      <p class="eyebrow">About</p>
+      <h2>VirtuBrain is the new name of Process Reinvention Hub.</h2>
+      <p>We are an AI-enabled consulting practice based in the Philippines. Our work sits where process expertise meets agentic AI: finance and accounting, HR, shared services, and the governance that makes agent-run work stand up to an audit.</p>
+      <div class="who">
+        <b>Ver Villarico</b>
+        <span class="eyebrow">Founder</span>
+        <p>A senior transformation and training leader with a global consulting background. Ver works across record-to-report, procure-to-pay, order-to-cash, HR and shared-services delivery, and on governance frameworks for AI agents.</p>
+      </div>
+    </div>
+    <div>
+      <h3>What we hold ourselves to</h3>
+      <ul class="princ">
+        <li><b>No promised percentages.</b><span>We don't quote improvement figures until we have measured your process with your data.</span></li>
+        <li><b>Evidence for every agent action.</b><span>If a reviewer can't follow what an agent did and why, it isn't finished.</span></li>
+        <li><b>People stay accountable.</b><span>Agents prepare and execute. Sign-off stays with a named person.</span></li>
+        <li><b>One process first.</b><span>A bounded pilot that works beats a program that is still being planned.</span></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="sec" id="contact">
+  <div class="wrap split">
+    <div>
+      <p class="eyebrow">Contact</p>
+      <h2>Tell us about the process you want to <span class="dbl">fix</span>.</h2>
+      <p>A short note is enough. We'll reply by email to set up an intro call.</p>
+      <p class="mail"><span id="mail-text"></span><button type="button" id="copy">Copy</button></p>
+    </div>
+    <form id="form" novalidate>
+      <label for="f-name">Name<input id="f-name" name="name" autocomplete="name" required></label>
+      <label for="f-email">Work email<input id="f-email" name="email" type="email" autocomplete="email" required></label>
+      <label for="f-org">Organization (optional)<input id="f-org" name="organization" autocomplete="organization"></label>
+      <label for="f-need">I'm interested in
+        <select id="f-need" name="interest" required>
+          <option value="">Choose one</option>
+          <option>Enterprise finance or shared services</option>
+          <option>An assistant for my business</option>
+          <option>Team training</option>
+          <option>Something else</option>
+        </select>
+      </label>
+      <label for="f-msg">What would you like to fix?<textarea id="f-msg" name="message" required></textarea></label>
+      <button class="btn" type="submit">Send message</button>
+      <p class="status" id="status" role="status"></p>
+      <p class="small" id="privacy">Privacy: we use the details you send only to reply to you. We don't sell or share them, and we'll delete them if you ask.</p>
+    </form>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>© 2026 VirtuBrain. Formerly Process Reinvention Hub.</span>
+    <nav aria-label="Footer"><a href="#enterprise">Enterprise</a><a href="#small-business">Small business</a><a href="#about">About</a><a href="#privacy">Privacy</a><a href="#contact">Contact</a></nav>
+  </div>
+</footer>
+
+<script>
+/* ---- Site settings: edit these two lines before going live ---- */
+const SITE = {
+  email: 'hello@virtubrain.ai',   // the inbox that receives enquiries
+  formEndpoint: ''                // optional: a form service URL that accepts a JSON POST
+};
+
+const MAPS = {
+  'Month-end close': [
+    [['Bank reconciliation','check: statement ties to ledger, item by item'],['Intercompany matching','check: both sides agree to the cent'],['Recurring journals','check: entry matches the approved schedule']],
+    [['Accruals','agent drafts from open POs, accountant reviews'],['Flux analysis','agent explains variances, controller confirms'],['Balance sheet support','agent assembles, reviewer signs']],
+    [['Judgmental provisions','policy and judgment, documented by a person'],['Close sign-off','the controller owns the numbers'],['Auditor conversations','relationships and accountability']]
+  ],
+  'Supplier invoices': [
+    [['Invoice capture and coding','check: fields match the source document'],['Three-way match','check: PO, receipt and invoice within tolerance'],['Duplicate detection','check: no prior supplier, number and amount']],
+    [['Exception resolution','agent proposes the fix, analyst approves'],['Supplier queries','agent drafts from ledger status, analyst sends'],['Tax and country rules','agent flags the rule, specialist confirms']],
+    [['New supplier approval','due diligence and judgment'],['Payment release','authorized approver, duties kept separate'],['Dispute settlement','commercial decision']]
+  ],
+  'Customer support': [
+    [['Order and booking status','check: answer comes from the system record'],['Hours, prices and policies','check: answer quotes your published document'],['Appointment booking','check: slot confirmed in your calendar']],
+    [['Refund requests','assistant gathers the facts, staff decide'],['Complaints','assistant drafts the reply, staff send'],['Quotes for custom work','assistant collects details, owner prices']],
+    [['Exceptions to policy','a manager decides'],['Upset customers','a person takes over'],['Legal or safety questions','always a person']]
+  ]
+};
+const ZONES = [
+  ['Auto zone','--auto','Output can be checked against a record. The agent does it and the check is logged.'],
+  ['Assist zone','--assist','Output needs judgment to confirm. The agent drafts and a person approves.'],
+  ['Human zone','--human','Accountability cannot be delegated. People decide and agents prepare.']
+];
+const tabs = document.getElementById('zm-tabs'), zones = document.getElementById('zm-zones');
+function draw(name){
+  zones.innerHTML = ZONES.map((z,i) =>
+    `<div class="zone" style="--z:var(${z[1]})"><h3>${z[0]}</h3><p class="rule">${z[2]}</p><ul>${
+      MAPS[name][i].map(s => `<li><b>${s[0]}</b><span>${s[1]}</span></li>`).join('')}</ul></div>`).join('');
+  [...tabs.children].forEach(b => b.setAttribute('aria-pressed', b.textContent === name));
+}
+Object.keys(MAPS).forEach(name => {
+  const b = document.createElement('button'); b.type = 'button'; b.textContent = name;
+  b.addEventListener('click', () => draw(name)); tabs.appendChild(b);
+});
+draw('Month-end close');
+
+const top_ = document.getElementById('top'), menu = document.getElementById('menu');
+menu.addEventListener('click', () => menu.setAttribute('aria-expanded', top_.classList.toggle('open')));
+document.getElementById('nav').addEventListener('click', e => { if (e.target.closest('a')) { top_.classList.remove('open'); menu.setAttribute('aria-expanded', false); } });
+
+document.getElementById('mail-text').textContent = SITE.email;
+const copy = document.getElementById('copy');
+copy.addEventListener('click', () => {
+  navigator.clipboard.writeText(SITE.email).then(() => { copy.textContent = 'Copied'; setTimeout(() => copy.textContent = 'Copy', 1600); })
+    .catch(() => { const r = document.createRange(); r.selectNodeContents(document.getElementById('mail-text')); const s = getSelection(); s.removeAllRanges(); s.addRange(r); });
+});
+
+const form = document.getElementById('form'), statusEl = document.getElementById('status');
+form.addEventListener('submit', async e => {
+  e.preventDefault();
+  if (!form.checkValidity()) { statusEl.textContent = 'Please fill in your name, a valid email, your interest and a short message.'; form.querySelector(':invalid').focus(); return; }
+  const d = Object.fromEntries(new FormData(form));
+  if (SITE.formEndpoint) {
+    statusEl.textContent = 'Sending…';
+    try {
+      const r = await fetch(SITE.formEndpoint, { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify(d) });
+      if (!r.ok) throw new Error(r.status);
+      form.reset(); statusEl.textContent = 'Message sent. We will reply by email.';
+    } catch { statusEl.textContent = 'The message could not be sent. Please email us at ' + SITE.email + '.'; }
+  } else {
+    const body = `${d.message}\n\n${d.name}\n${d.organization || ''}\n${d.email}\nInterest: ${d.interest}`;
+    location.href = `mailto:${SITE.email}?subject=${encodeURIComponent('Enquiry: ' + d.interest)}&body=${encodeURIComponent(body)}`;
+    statusEl.textContent = 'Your email app should open with this message ready to send. If nothing opens, write to ' + SITE.email + '.';
+  }
+});
+</script>

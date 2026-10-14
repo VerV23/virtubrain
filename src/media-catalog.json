@@ -1,0 +1,696 @@
+{
+ "stills": {
+  "titanium-dial": {
+   "w": 1344,
+   "h": 752,
+   "widths": [
+    640,
+    1024,
+    1344
+   ],
+   "world": "dark",
+   "alt": "A precision dial machined from dark titanium, its single teal needle catching the light.",
+   "src": "/media/img/titanium-dial"
+  },
+  "three-channels": {
+   "w": 1344,
+   "h": 752,
+   "widths": [
+    640,
+    1024,
+    1344
+   ],
+   "world": "dark",
+   "alt": "Three milled channels in a dark aluminium block, each holding a row of glass spheres lit teal, amber and rose.",
+   "src": "/media/img/three-channels"
+  },
+  "manila-workshop": {
+   "w": 1024,
+   "h": 688,
+   "widths": [
+    640,
+    1024
+   ],
+   "world": "people",
+   "alt": "A Manila team workshop: a facilitator maps process steps on a glass wall of sticky notes while colleagues work at laptops.",
+   "src": "/media/img/manila-workshop"
+  },
+  "controller-reconciliation": {
+   "w": 1024,
+   "h": 688,
+   "widths": [
+    640,
+    1024
+   ],
+   "world": "people",
+   "alt": "A finance controller's hands ticking off a printed reconciliation report beside a laptop.",
+   "src": "/media/img/controller-reconciliation"
+  },
+  "blueprint-plate-1": {
+   "w": 2560,
+   "h": 1429,
+   "widths": [
+    640,
+    1024,
+    1600,
+    2400
+   ],
+   "world": "warm",
+   "alt": "Fine blueprint linework of concentric circles on warm paper.",
+   "src": "/media/img/blueprint-plate-1"
+  },
+  "cafe-owner": {
+   "w": 2560,
+   "h": 1429,
+   "widths": [
+    640,
+    1024,
+    1600,
+    2400
+   ],
+   "world": "people",
+   "alt": "A cafe and bakery owner in Manila checking orders on a tablet at her counter.",
+   "src": "/media/img/cafe-owner"
+  },
+  "lanes-still": {
+   "w": 1344,
+   "h": 752,
+   "widths": [
+    640,
+    1024,
+    1344
+   ],
+   "world": "dark",
+   "alt": "Blank tiles settled into three straight lanes, lit teal, cobalt and rose from beneath.",
+   "src": "/media/img/lanes-still"
+  },
+  "brass-notebook": {
+   "w": 896,
+   "h": 1120,
+   "widths": [
+    640,
+    896
+   ],
+   "world": "dark",
+   "alt": "A navy clothbound notebook with a brass ruler resting across it.",
+   "src": "/media/img/brass-notebook"
+  },
+  "exploded-dial": {
+   "w": 2560,
+   "h": 1429,
+   "widths": [
+    640,
+    1024,
+    1600,
+    2400
+   ],
+   "world": "warm",
+   "alt": "The rings and needle of a calibration dial laid out in an exploded arrangement on off-white paper.",
+   "src": "/media/img/exploded-dial"
+  },
+  "atlas-diptych": {
+   "w": 1024,
+   "h": 688,
+   "widths": [
+    640,
+    1024
+   ],
+   "world": "dark",
+   "alt": "A tower of engraved glass plates above a macro of the flowchart etched into one plate.",
+   "src": "/media/img/atlas-diptych"
+  },
+  "atlas-plate": {
+   "w": 1344,
+   "h": 752,
+   "widths": [
+    640,
+    1024,
+    1344
+   ],
+   "world": "dark",
+   "alt": "A single smoked-glass plate lying on a dark green-black surface.",
+   "src": "/media/img/atlas-plate"
+  },
+  "atlas-book": {
+   "w": 896,
+   "h": 1120,
+   "widths": [
+    640,
+    896
+   ],
+   "world": "dark",
+   "alt": "Engraved glass plates bound along one edge like a book.",
+   "src": "/media/img/atlas-book"
+  },
+  "brass-ruling-pen": {
+   "w": 896,
+   "h": 1120,
+   "widths": [
+    640,
+    896
+   ],
+   "world": "light",
+   "alt": "A brass ruling pen drawing a fine line along a ruler on white ledger paper.",
+   "src": "/media/img/brass-ruling-pen"
+  },
+  "atlas-closed": {
+   "w": 1344,
+   "h": 752,
+   "widths": [
+    640,
+    1024,
+    1344
+   ],
+   "world": "dark",
+   "alt": "The closed stack of thirteen smoked-glass plates on a dark studio floor.",
+   "src": "/media/img/atlas-closed"
+  },
+  "desk-bell": {
+   "w": 896,
+   "h": 1120,
+   "widths": [
+    640,
+    896
+   ],
+   "world": "dark",
+   "alt": "A dark green service bell on a green-black surface.",
+   "src": "/media/img/desk-bell"
+  },
+  "ledger-texture": {
+   "w": 1024,
+   "h": 1024,
+   "widths": [
+    640,
+    1024
+   ],
+   "world": "dark",
+   "alt": "Columnar ledger ruling in pale green lines on near-black.",
+   "src": "/media/img/ledger-texture"
+  },
+  "teal-dial-slate": {
+   "w": 2560,
+   "h": 1448,
+   "widths": [
+    640,
+    1024,
+    1600,
+    2400
+   ],
+   "world": "dark",
+   "alt": "A precision dial with a teal bezel resting on dark slate.",
+   "src": "/media/img/teal-dial-slate"
+  },
+  "brass-bars": {
+   "w": 1344,
+   "h": 752,
+   "widths": [
+    640,
+    1024,
+    1344
+   ],
+   "world": "dark",
+   "alt": "Three brass bars of different lengths on deep navy cloth.",
+   "src": "/media/img/brass-bars"
+  },
+  "atlas-plate-square": {
+   "w": 1024,
+   "h": 1024,
+   "widths": [
+    640,
+    1024
+   ],
+   "world": "dark",
+   "alt": "One smoked-glass plate at an angle on a dark surface.",
+   "src": "/media/img/atlas-plate-square"
+  },
+  "atlas-fanned": {
+   "w": 896,
+   "h": 1120,
+   "widths": [
+    640,
+    896
+   ],
+   "world": "dark",
+   "alt": "Engraved glass plates fanned upright on a steel stand.",
+   "src": "/media/img/atlas-fanned"
+  },
+  "atlas-flowchart-macro": {
+   "w": 1024,
+   "h": 688,
+   "widths": [
+    640,
+    1024
+   ],
+   "world": "dark",
+   "alt": "Macro of a flowchart engraved in smoked glass, one path traced in red.",
+   "src": "/media/img/atlas-flowchart-macro"
+  },
+  "monolith-closed": {
+   "w": 2560,
+   "h": 1448,
+   "widths": [
+    640,
+    1024,
+    1600,
+    2400
+   ],
+   "world": "light",
+   "alt": "A closed monolith of stacked frosted-glass slabs on a pale grey studio sweep.",
+   "src": "/media/img/monolith-closed"
+  },
+  "atlas-stepped": {
+   "w": 896,
+   "h": 1120,
+   "widths": [
+    640,
+    896
+   ],
+   "world": "dark",
+   "alt": "Glass plates arranged in stepped tiers, each engraved with a process diagram.",
+   "src": "/media/img/atlas-stepped"
+  },
+  "night-office": {
+   "w": 2560,
+   "h": 1429,
+   "widths": [
+    640,
+    1024,
+    1600,
+    2400
+   ],
+   "world": "people",
+   "alt": "A shared-services operations floor in Metro Manila at night, rows of analysts at dual monitors.",
+   "src": "/media/img/night-office"
+  },
+  "tickmarks-1": {
+   "w": 1024,
+   "h": 1024,
+   "widths": [
+    640,
+    1024
+   ],
+   "world": "light",
+   "alt": "Nine hand-drawn audit tick marks in black ink.",
+   "src": "/media/img/tickmarks-1"
+  },
+  "maquette-city": {
+   "w": 2560,
+   "h": 1448,
+   "widths": [
+    640,
+    1024,
+    1600,
+    2400
+   ],
+   "world": "light",
+   "alt": "A white architectural scale model of an abstract city seen from above.",
+   "src": "/media/img/maquette-city"
+  },
+  "limestone-tile": {
+   "w": 1024,
+   "h": 688,
+   "widths": [
+    640,
+    1024
+   ],
+   "world": "light",
+   "alt": "One blank limestone tile standing on a pale surface, a faint rose light beneath it.",
+   "src": "/media/img/limestone-tile"
+  },
+  "monolith-exploded": {
+   "w": 2560,
+   "h": 1448,
+   "widths": [
+    640,
+    1024,
+    1600,
+    2400
+   ],
+   "world": "light",
+   "alt": "The frosted monolith opened into evenly spaced levels lit teal, with a few fault lines glowing red.",
+   "src": "/media/img/monolith-exploded"
+  },
+  "brass-line": {
+   "w": 1344,
+   "h": 752,
+   "widths": [
+    640,
+    1024,
+    1344
+   ],
+   "world": "dark",
+   "alt": "A single brass rule laid across deep navy cloth.",
+   "src": "/media/img/brass-line"
+  },
+  "ss-floor-dusk": {
+   "w": 1024,
+   "h": 688,
+   "widths": [
+    640,
+    1024
+   ],
+   "world": "people",
+   "alt": "Analysts at dual monitors on a shared-services floor at dusk, city towers beyond the windows.",
+   "src": "/media/img/ss-floor-dusk"
+  },
+  "ledger-glow": {
+   "w": 1344,
+   "h": 752,
+   "widths": [
+    640,
+    1024,
+    1344
+   ],
+   "world": "dark",
+   "alt": "A sheet of ledger paper on graphite whose far edge dissolves into a glowing teal grid.",
+   "src": "/media/img/ledger-glow"
+  },
+  "paper-dial": {
+   "w": 2560,
+   "h": 1429,
+   "widths": [
+    640,
+    1024,
+    1600,
+    2400
+   ],
+   "world": "warm",
+   "alt": "A technical drawing of a calibration dial in teal and ink on warm paper.",
+   "src": "/media/img/paper-dial"
+  },
+  "blueprint-plate-2": {
+   "w": 2560,
+   "h": 1429,
+   "widths": [
+    640,
+    1024,
+    1600,
+    2400
+   ],
+   "world": "warm",
+   "alt": "Dense radial blueprint linework on warm paper.",
+   "src": "/media/img/blueprint-plate-2"
+  },
+  "team-workshop": {
+   "w": 1024,
+   "h": 688,
+   "widths": [
+    640,
+    1024
+   ],
+   "world": "people",
+   "alt": "A facilitator at a wall of sticky notes arranged as process steps, a small team around the table.",
+   "src": "/media/img/team-workshop"
+  },
+  "atlas-clipped": {
+   "w": 896,
+   "h": 1120,
+   "widths": [
+    640,
+    896
+   ],
+   "world": "dark",
+   "alt": "A stack of engraved glass plates held by a steel binder clip.",
+   "src": "/media/img/atlas-clipped"
+  },
+  "atlas-flowchart-wide": {
+   "w": 1344,
+   "h": 752,
+   "widths": [
+    640,
+    1024,
+    1344
+   ],
+   "world": "dark",
+   "alt": "Stacked glass plates engraved with flowcharts, one route traced in red.",
+   "src": "/media/img/atlas-flowchart-wide"
+  },
+  "three-dials": {
+   "w": 1344,
+   "h": 752,
+   "widths": [
+    640,
+    1024,
+    1344
+   ],
+   "world": "dark",
+   "alt": "Three titanium dials of decreasing size in a row, each needle set differently.",
+   "src": "/media/img/three-dials"
+  },
+  "teal-dial-magnifier": {
+   "w": 2560,
+   "h": 1429,
+   "widths": [
+    640,
+    1024,
+    1600,
+    2400
+   ],
+   "world": "dark",
+   "alt": "A precision dial with a teal bezel and a steel handle, tilted on dark slate.",
+   "src": "/media/img/teal-dial-magnifier"
+  },
+  "atlas-plate-wide": {
+   "w": 1344,
+   "h": 752,
+   "widths": [
+    640,
+    1024,
+    1344
+   ],
+   "world": "dark",
+   "alt": "A wide engraved glass plate, its flowchart lines glowing faintly.",
+   "src": "/media/img/atlas-plate-wide"
+  },
+  "atlas-tower": {
+   "w": 1344,
+   "h": 752,
+   "widths": [
+    640,
+    1024,
+    1344
+   ],
+   "world": "dark",
+   "alt": "Thirteen glass plates risen into an evenly spaced tower, engraved lines lit from within.",
+   "src": "/media/img/atlas-tower"
+  },
+  "atlas-columns": {
+   "w": 896,
+   "h": 1120,
+   "widths": [
+    640,
+    896
+   ],
+   "world": "dark",
+   "alt": "Three upright columns of engraved glass on a steel base.",
+   "src": "/media/img/atlas-columns"
+  },
+  "brass-bell": {
+   "w": 896,
+   "h": 1120,
+   "widths": [
+    640,
+    896
+   ],
+   "world": "dark",
+   "alt": "A brass service bell beside a brass rule on navy cloth.",
+   "src": "/media/img/brass-bell"
+  },
+  "limestone-ruler": {
+   "w": 880,
+   "h": 1168,
+   "widths": [
+    640,
+    880
+   ],
+   "world": "light",
+   "alt": "A limestone tile resting on a slim teal-edged ruler.",
+   "src": "/media/img/limestone-ruler"
+  },
+  "atlas-flowchart-angle": {
+   "w": 1344,
+   "h": 752,
+   "widths": [
+    640,
+    1024,
+    1344
+   ],
+   "world": "dark",
+   "alt": "Engraved flowcharts in stacked glass seen at a low angle.",
+   "src": "/media/img/atlas-flowchart-angle"
+  },
+  "brass-ruler": {
+   "w": 1344,
+   "h": 752,
+   "widths": [
+    640,
+    1024,
+    1344
+   ],
+   "world": "dark",
+   "alt": "Macro of a brass ruler's graduations on navy cloth.",
+   "src": "/media/img/brass-ruler"
+  },
+  "glass-levels": {
+   "w": 896,
+   "h": 1120,
+   "widths": [
+    640,
+    896
+   ],
+   "world": "dark",
+   "alt": "Six thin glass sheets levitating in even layers, each engraved with a teal grid.",
+   "src": "/media/img/glass-levels"
+  },
+  "titanium-line": {
+   "w": 1344,
+   "h": 576,
+   "widths": [
+    640,
+    1024,
+    1344
+   ],
+   "world": "dark",
+   "alt": "Brushed dark titanium crossed by a single thin line of teal light.",
+   "src": "/media/img/titanium-line"
+  },
+  "cbd-aerial": {
+   "w": 1344,
+   "h": 752,
+   "widths": [
+    640,
+    1024,
+    1344
+   ],
+   "world": "people",
+   "alt": "A Southeast Asian business district at blue hour, office towers lit floor by floor.",
+   "src": "/media/img/cbd-aerial"
+  },
+  "tickmarks-2": {
+   "w": 1024,
+   "h": 1024,
+   "widths": [
+    640,
+    1024
+   ],
+   "world": "light",
+   "alt": "Nine hand-drawn audit tick marks in black ink.",
+   "src": "/media/img/tickmarks-2"
+  },
+  "atlas-tower-tall": {
+   "w": 1344,
+   "h": 752,
+   "widths": [
+    640,
+    1024,
+    1344
+   ],
+   "world": "dark",
+   "alt": "A tall tower of engraved glass plates glowing faintly green.",
+   "src": "/media/img/atlas-tower-tall"
+  },
+  "atlas-blocks": {
+   "w": 896,
+   "h": 1120,
+   "widths": [
+    640,
+    896
+   ],
+   "world": "dark",
+   "alt": "Three short stacks of engraved glass side by side.",
+   "src": "/media/img/atlas-blocks"
+  },
+  "atlas-closed-low": {
+   "w": 1344,
+   "h": 752,
+   "widths": [
+    640,
+    1024,
+    1344
+   ],
+   "world": "dark",
+   "alt": "The closed glass stack seen low and from the front in a dark studio.",
+   "src": "/media/img/atlas-closed-low"
+  },
+  "bakery-owner": {
+   "w": 1024,
+   "h": 688,
+   "widths": [
+    640,
+    1024
+   ],
+   "world": "people",
+   "alt": "A bakery owner smiling at a customer message on her phone behind the counter.",
+   "src": "/media/img/bakery-owner"
+  },
+  "paper-dial-portrait": {
+   "w": 1856,
+   "h": 2304,
+   "widths": [
+    640,
+    1024,
+    1600,
+    1856
+   ],
+   "world": "warm",
+   "alt": "A technical drawing of a dial and needle on warm paper, portrait format.",
+   "src": "/media/img/paper-dial-portrait"
+  }
+ },
+ "films": {
+  "atlas": {
+   "frames": 120,
+   "base": "/media/film/atlas",
+   "desktop": 1440,
+   "mobile": 720,
+   "alt": "Thirteen smoked-glass plates rise from a closed stack into a lit tower.",
+   "aspect": "16/9"
+  },
+  "monolith": {
+   "frames": 120,
+   "base": "/media/film/monolith",
+   "desktop": 1276,
+   "mobile": 720,
+   "alt": "A frosted-glass monolith opens into levels that light teal, with fault lines glowing red.",
+   "aspect": "16/9"
+  },
+  "lanes": {
+   "frames": 120,
+   "base": "/media/film/lanes",
+   "desktop": 1276,
+   "mobile": 720,
+   "alt": "Scattered tiles drift into three ordered lanes lit teal, cobalt and rose.",
+   "aspect": "16/9"
+  }
+ },
+ "loops": {
+  "dial": {
+   "mp4": "/media/loop/dial.mp4",
+   "webm": "/media/loop/dial.webm",
+   "poster": "/media/loop/dial-poster.webp",
+   "alt": "A dial's needle sweeps slowly across its face."
+  },
+  "office": {
+   "mp4": "/media/loop/office.mp4",
+   "webm": "/media/loop/office.webm",
+   "poster": "/media/loop/office-poster.webp",
+   "alt": "A slow move down a quiet shared-services floor at night."
+  }
+ },
+ "icons": {
+  "strategy-enterprise-planning": "/media/icons/strategy-enterprise-planning.webp",
+  "product-service-development": "/media/icons/product-service-development.webp",
+  "procurement": "/media/icons/procurement.webp",
+  "asset-facilities-management": "/media/icons/asset-facilities-management.webp",
+  "supply-chain-operations-logistics": "/media/icons/supply-chain-operations-logistics.webp",
+  "marketing-sales-cx": "/media/icons/marketing-sales-cx.webp",
+  "finance-accounting": "/media/icons/finance-accounting.webp",
+  "information-technology-management": "/media/icons/information-technology-management.webp",
+  "technology-specific-operations": "/media/icons/technology-specific-operations.webp",
+  "external-relations-esg": "/media/icons/external-relations-esg.webp",
+  "enterprise-risk-legal-compliance": "/media/icons/enterprise-risk-legal-compliance.webp",
+  "human-capital-management": "/media/icons/human-capital-management.webp",
+  "retail-specific-operations": "/media/icons/retail-specific-operations.webp",
+  "vb-monogram": "/media/icons/vb-monogram.webp"
+ }
+}
