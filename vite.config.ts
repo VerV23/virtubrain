@@ -8,7 +8,7 @@ import { resolve } from "node:path";
    injected at build time:  <!-- @include header -->  <!-- @include footer -->
    The header marks the current section with aria-current using the page's data-nav value. */
 
-const ROOT = __dirname;
+const ROOT = import.meta.dirname;
 const PAGES = {
   main: "index.html",
   app: "app/index.html",

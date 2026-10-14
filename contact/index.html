@@ -4,21 +4,131 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Talk to Verantis</title>
-<meta name="description" content="Tell us which process keeps breaking. We'll show you the step where it breaks.">
+<meta name="description" content="Tell us which process keeps breaking. A short note is enough, and we'll reply by email to set up an intro call.">
 <meta name="theme-color" content="#06120e">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="VirtuBrain by Verantis">
 <meta property="og:title" content="Talk to Verantis">
-<meta property="og:description" content="Tell us which process keeps breaking. We'll show you the step where it breaks.">
+<meta property="og:description" content="Tell us which process keeps breaking. A short note is enough, and we'll reply by email to set up an intro call.">
 <meta property="og:image" content="/og.jpg">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 </head>
-<body data-nav="contact" class="w-ink">
+<body data-nav="contact" class="w-void">
 <!-- @include header -->
 <main id="main" tabindex="-1">
-  <section class="sec"><div class="wrap"><h1 class="t-h1">Talk to Verantis</h1></div></section>
+  <section class="ct-sec w-void" aria-labelledby="ct-title">
+    <div class="ct-glow" aria-hidden="true"><img src="/media/img/ledger-glow-1344.webp" alt="" width="1344" height="752" fetchpriority="low"></div>
+    <div class="wrap ct-grid">
+      <div class="ct-intro">
+        <p class="eyebrow accent hl-fade" style="--li:0">Contact</p>
+        <h1 id="ct-title" class="t-h1 hl"><span class="ln" style="--li:0"><span>Tell us about the</span></span><span class="ln" style="--li:1"><span>process you want to fix.</span></span></h1>
+        <p class="t-lede hl-fade" style="--li:1">A short note is enough. We'll reply by email to set up an intro call.</p>
+      </div>
+
+      <div class="ct-form-wrap hl-fade" style="--li:2">
+        <form class="form-card" id="talk" name="talk" method="POST" action="/contact/?sent=1" data-netlify="true" netlify-honeypot="bot-field" aria-labelledby="form-title">
+          <input type="hidden" name="form-name" value="talk">
+          <p hidden><label>Leave this field empty <input name="bot-field" autocomplete="off"></label></p>
+          <input type="hidden" name="process" id="f-process" value="">
+          <div class="form-body">
+            <h2 id="form-title">Send a message</h2>
+            <p>Name, email, interest and message are required. The rest is optional.</p>
+            <div class="fgrid">
+              <div class="proc-chip full" id="proc-chip" hidden></div>
+              <div class="field">
+                <label for="f-name">Name</label>
+                <input class="input" id="f-name" name="name" type="text" autocomplete="name" required maxlength="120" aria-describedby="e-name">
+                <p class="err" id="e-name"></p>
+              </div>
+              <div class="field">
+                <label for="f-email">Work email</label>
+                <input class="input" id="f-email" name="email" type="email" inputmode="email" autocomplete="email" required maxlength="200" aria-describedby="e-email" spellcheck="false">
+                <p class="err" id="e-email"></p>
+              </div>
+              <div class="field">
+                <label for="f-company">Company <span class="opt">(optional)</span></label>
+                <input class="input" id="f-company" name="company" type="text" autocomplete="organization" maxlength="160">
+              </div>
+              <div class="field">
+                <label for="f-interest">I'm interested in</label>
+                <select class="input" id="f-interest" name="interest" required aria-describedby="e-interest">
+                  <option value="">Choose one</option>
+                  <optgroup label="Finance and shared services">
+                    <option value="Agentic Close Assurance" data-key="close">Agentic Close Assurance</option>
+                    <option value="Agentic Supplier Invoice and Payment" data-key="invoice">Agentic Supplier Invoice and Payment</option>
+                    <option value="Agent Governance Design" data-key="governance">Agent Governance Design</option>
+                    <option value="Team Enablement" data-key="enablement">Team Enablement (training)</option>
+                    <option value="Finance or shared services, offer not chosen yet" data-key="enterprise">Not sure yet which offer</option>
+                  </optgroup>
+                  <optgroup label="Growing businesses">
+                    <option value="An assistant for my business" data-key="assistant">An assistant for my business</option>
+                  </optgroup>
+                  <optgroup label="Other">
+                    <option value="The VirtuBrain app" data-key="app">The VirtuBrain app</option>
+                    <option value="Something else" data-key="other">Something else</option>
+                  </optgroup>
+                </select>
+                <p class="err" id="e-interest"></p>
+              </div>
+              <div class="field full">
+                <label for="f-function">Business function <span class="opt">(optional)</span></label>
+                <select class="input" id="f-function" name="function">
+                  <option value="">Not sure, or more than one</option>
+                  <option>Strategy &amp; Enterprise Planning</option>
+                  <option>Product &amp; Service Development</option>
+                  <option>Marketing, Sales &amp; Customer Experience</option>
+                  <option>Supply Chain, Operations &amp; Logistics</option>
+                  <option>Information Technology Management</option>
+                  <option>Human Capital Management</option>
+                  <option>Procurement</option>
+                  <option>Finance &amp; Accounting</option>
+                  <option>Retail-Specific Operations</option>
+                  <option>External Relations, Corporate Affairs &amp; ESG</option>
+                  <option>Enterprise Risk, Legal &amp; Compliance</option>
+                  <option>Asset &amp; Facilities Management</option>
+                  <option>Technology-Specific Operations</option>
+                </select>
+              </div>
+              <div class="field full">
+                <label for="f-message">What would you like to fix?</label>
+                <p class="hint" id="h-message">A sentence or two is enough. Name the process if you can.</p>
+                <textarea class="input" id="f-message" name="message" rows="6" required maxlength="4000" aria-describedby="h-message e-message"></textarea>
+                <p class="err" id="e-message"></p>
+              </div>
+            </div>
+            <div class="form-foot">
+              <button class="btn btn-accent" type="submit">Send message</button>
+              <p class="privacy">We use the details you send only to reply to you. We don't sell or share them, and we'll delete them if you ask.</p>
+            </div>
+            <div class="form-status" id="form-status" role="status" aria-live="polite"></div>
+          </div>
+          <div class="form-result" id="form-result" tabindex="-1" hidden></div>
+        </form>
+      </div>
+
+      <div class="ct-next">
+        <div class="stack" style="--gap:6px">
+          <h2 class="t-h3">What happens next</h2>
+          <ol class="next-steps">
+            <li><b>We reply by email</b><span>We set up an intro call at a time that suits you.</span></li>
+            <li><b>We pick one process</b><span>On the call we choose where to start and what to look at first.</span></li>
+            <li><b>You get a written scope</b><span>Before any work begins, you see the scope in writing.</span></li>
+          </ol>
+        </div>
+        <div class="direct">
+          <p class="t-small">Prefer email? Write to us directly.</p>
+          <div class="direct-row">
+            <a id="direct-email" href="mailto:vervillarico23@gmail.com">vervillarico23@gmail.com</a>
+            <button class="copy-btn" type="button" data-copy-from="direct-email">Copy address</button>
+          </div>
+          <p class="t-small t-quiet">Manila. Working with clients in the Philippines, the United States and Singapore.</p>
+        </div>
+        <p class="t-small t-quiet">Want to look around first? <a class="link-more" href="/app/">Open the app</a></p>
+      </div>
+    </div>
+  </section>
 </main>
 <!-- @include footer -->
 <script type="module" src="/src/pages/contact.ts"></script>

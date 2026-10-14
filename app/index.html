@@ -14,13 +14,33 @@
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="preload" href="/data/master-taxonomy.json" as="fetch" type="application/json" crossorigin="anonymous">
 </head>
-<body data-nav="app" class="w-ink">
+<body data-nav="app" class="w-ink vb-page">
 <!-- @include header -->
 <main id="main" tabindex="-1">
-  <section class="sec"><div class="wrap"><h1 class="t-h1">The VirtuBrain app: explore 142 processes down to the step</h1></div></section>
+  <h1 class="sr-only">The VirtuBrain app</h1>
+  <!-- Static first frame: the app chrome paints before any script or data arrives; Preact replaces it. -->
+  <div id="vb-root" class="vb-root">
+    <div class="vb" data-view="explore" aria-busy="true">
+      <div class="tb">
+        <div class="tabs" aria-hidden="true"><span class="tab" aria-selected="true">Explore</span><span class="tab">Pain points</span><span class="tab">X-ray</span></div>
+        <div class="tb-search"><span class="tb-fake">Search processes, activities, tasks</span></div>
+      </div>
+      <div class="vb-body">
+        <noscript><style>.vb-body > .ex { display: none !important; }</style><p class="vb-noscript">The VirtuBrain app needs JavaScript to open the process library. You can still <a href="/contact/">talk to us</a> about a process.</p></noscript>
+        <div class="ex" data-pane="rail">
+          <div class="pane rail"><div class="pane-head"><span class="pane-title">Functions</span></div><div class="skel skel-list" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div></div>
+          <div class="pane list"><div class="pane-head"><span class="pane-title">Processes</span></div><div class="skel skel-list" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div></div>
+          <div class="pane detail">
+            <div class="d-wrap"><div class="skel skel-title" aria-hidden="true"><span></span><span></span></div><div class="skel" aria-hidden="true"><span></span><span></span><span></span><span></span></div></div>
+          </div>
+        </div>
+      </div>
+      <p class="vb-status st-data">Loading the process library.</p>
+    </div>
+  </div>
 </main>
-<!-- @include footer -->
 <script type="module" src="/src/pages/app.ts"></script>
 </body>
 </html>

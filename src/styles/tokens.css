@@ -75,29 +75,29 @@
 /* worlds ------------------------------------------------------------------- */
 :root, .w-ink {
   --bg: var(--ink); --surface: var(--ink-2); --surface-2: var(--ink-3);
-  --fg: #eef3ef; --fg-2: #a9b8b1; --fg-3: #6f827a;
+  --fg: #eef3ef; --fg-2: #a9b8b1; --fg-3: #7d8e87;
   --line: rgba(232, 240, 235, 0.11); --line-2: rgba(232, 240, 235, 0.2);
   --accent: var(--teal); --accent-fg: #03140f;
   --btn-bg: #eef3ef; --btn-fg: #04110d;
   color-scheme: dark;
 }
 .w-void { --bg: var(--void); --surface: #07130f; --surface-2: var(--ink-2);
-  --fg: #eef3ef; --fg-2: #a9b8b1; --fg-3: #6f827a; --line: rgba(232,240,235,.1); --line-2: rgba(232,240,235,.2);
+  --fg: #eef3ef; --fg-2: #a9b8b1; --fg-3: #7d8e87; --line: rgba(232,240,235,.1); --line-2: rgba(232,240,235,.2);
   --accent: var(--teal); --accent-fg: #03140f; --btn-bg: #eef3ef; --btn-fg: #04110d; color-scheme: dark; }
 .w-teal { --bg: var(--teal-void-edge); --surface: #0a2423; --surface-2: #10302e;
-  --fg: #edf5f2; --fg-2: #a6c0b9; --fg-3: #6f8c85; --line: rgba(230,245,240,.12); --line-2: rgba(230,245,240,.22);
+  --fg: #edf5f2; --fg-2: #a6c0b9; --fg-3: #7e9992; --line: rgba(230,245,240,.12); --line-2: rgba(230,245,240,.22);
   --accent: var(--teal); --accent-fg: #03140f; --btn-bg: #edf5f2; --btn-fg: #04110d; color-scheme: dark; }
 .w-fog { --bg: var(--fog); --surface: #e6ecee; --surface-2: #f3f6f7;
-  --fg: #0a1512; --fg-2: #3f4e49; --fg-3: #67756f; --line: rgba(10,21,18,.12); --line-2: rgba(10,21,18,.22);
-  --accent: #0e7a6a; --accent-fg: #ffffff; --btn-bg: #0a1512; --btn-fg: #eef3ef; color-scheme: light; }
+  --fg: #0a1512; --fg-2: #3f4e49; --fg-3: #57655f; --line: rgba(10,21,18,.12); --line-2: rgba(10,21,18,.22);
+  --accent: #0a6a5c; --accent-fg: #ffffff; --btn-bg: #0a1512; --btn-fg: #eef3ef; color-scheme: light; }
 .w-light { --bg: var(--fog-2); --surface: #ffffff; --surface-2: #f6f8f8;
-  --fg: #0a1512; --fg-2: #3f4e49; --fg-3: #67756f; --line: rgba(10,21,18,.1); --line-2: rgba(10,21,18,.2);
+  --fg: #0a1512; --fg-2: #3f4e49; --fg-3: #5f6d67; --line: rgba(10,21,18,.1); --line-2: rgba(10,21,18,.2);
   --accent: #0e7a6a; --accent-fg: #ffffff; --btn-bg: #0a1512; --btn-fg: #eef3ef; color-scheme: light; }
 .w-paper { --bg: var(--paper); --surface: #fbf9f4; --surface-2: #ffffff;
-  --fg: #1b1912; --fg-2: #4d4a40; --fg-3: #7a766a; --line: rgba(27,25,18,.12); --line-2: rgba(27,25,18,.24);
+  --fg: #1b1912; --fg-2: #4d4a40; --fg-3: #706c60; --line: rgba(27,25,18,.12); --line-2: rgba(27,25,18,.24);
   --accent: #0e5952; --accent-fg: #ffffff; --btn-bg: #1b1912; --btn-fg: #f4f1ea; color-scheme: light; }
 .w-navy { --bg: var(--navy); --surface: var(--navy-2); --surface-2: #17284a;
-  --fg: #f1f0ea; --fg-2: #b5b9c4; --fg-3: #7d8496; --line: rgba(241,240,234,.12); --line-2: rgba(241,240,234,.22);
+  --fg: #f1f0ea; --fg-2: #b5b9c4; --fg-3: #8b91a0; --line: rgba(241,240,234,.12); --line-2: rgba(241,240,234,.22);
   --accent: var(--brass); --accent-fg: #0a1426; --btn-bg: var(--brass); --btn-fg: #0a1426; color-scheme: dark; }
 
 /* the zones: use these classes wherever auto / assist / human appear */
