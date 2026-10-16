@@ -7,32 +7,68 @@ const reduce = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 const clamp = (v: number, a = 0, b = 1) => Math.min(b, Math.max(a, v));
 const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
 
-/* one rAF-throttled scroll/resize loop shared by every scroll-linked effect */
-const subs = new Set<() => void>();
-let ticking = false;
-export function onFrame(fn: () => void) {
-  if (!subs.size) {
-    const run = () => { ticking = false; subs.forEach((f) => f()); };
-    const req = () => { if (!ticking) { ticking = true; requestAnimationFrame(run); } };
-    addEventListener("scroll", req, { passive: true });
-    addEventListener("resize", req);
-  }
-  subs.add(fn);
-  fn();
+/* One rAF-throttled scroll/resize loop shared by every scroll-linked effect.
+   onFrame({ read, write }) runs every subscriber's read first, then every write, so one subscriber's
+   style writes never force layout for the next one's reads. onFrame(fn) (a single function) still works
+   and runs after the two-phase subscribers. Frames are skipped when neither scroll nor size changed. */
+type Phased = { read?: () => unknown; write?: (r: any) => void };
+const phased: Phased[] = [];
+const legacy = new Set<() => void>();
+let ticking = false, lastY = NaN, dirty = true;
+function run() {
+  ticking = false;
+  const y = scrollY;
+  if (y === lastY && !dirty) return;
+  lastY = y; dirty = false;
+  const reads = phased.map((s) => s.read?.());
+  phased.forEach((s, i) => s.write?.(reads[i]));
+  legacy.forEach((f) => f());
 }
+function req() { if (!ticking) { ticking = true; requestAnimationFrame(run); } }
+let wired = false;
+function wire() {
+  if (wired) return; wired = true;
+  addEventListener("scroll", req, { passive: true });
+  addEventListener("resize", () => { dirty = true; worldsStale = true; req(); });
+  new ResizeObserver(() => { dirty = true; worldsStale = true; req(); }).observe(document.body);
+}
+export function onFrame(fn: (() => void) | Phased) {
+  wire();
+  if (typeof fn === "function") { legacy.add(fn); fn(); }
+  else { phased.push(fn); const r = fn.read?.(); fn.write?.(r); }
+}
+/** ask for a frame even if nothing scrolled (after content changes size, for example) */
+export function requestFrame() { dirty = true; req(); }
 
-/* the skin (dark | light | navy) of whatever is painted at a viewport point, ignoring the given chrome */
+/* The skin (dark | light | navy) of whatever is painted at a viewport point, ignoring the given chrome.
+   Uses a cached map of world sections in document coordinates (rebuilt on resize or when the page
+   height changes), so asking every frame costs no hit-testing or layout. */
 const WORLD_SKIN: Record<string, string> = {
   "w-void": "dark", "w-ink": "dark", "w-teal": "dark", "w-fog": "light", "w-light": "light", "w-paper": "light", "w-navy": "navy",
 };
 const WORLD_SEL = ".w-void, .w-ink, .w-teal, .w-fog, .w-light, .w-paper, .w-navy, [data-skin]";
+type World = { el: HTMLElement; t: number; b: number; l: number; r: number; area: number; skin: string };
+let worlds: World[] = [], worldsStale = true;
+function mapWorlds() {
+  const sy = scrollY, sx = scrollX;
+  worlds = [...document.querySelectorAll<HTMLElement>(WORLD_SEL)].filter((el) => !el.closest("header.site-nav")).map((el) => {
+    const r = el.getBoundingClientRect();
+    const skin = el.dataset.skin || WORLD_SKIN[[...el.classList].find((c) => c in WORLD_SKIN) || ""] || "dark";
+    return { el, t: r.top + sy, b: r.bottom + sy, l: r.left + sx, r: r.right + sx, area: r.width * r.height, skin };
+  });
+  worldsStale = false;
+}
 export function skinAt(x: number, y: number, ignore: Element[] = []): string {
-  for (const el of document.elementsFromPoint(x, y)) {
-    if (ignore.some((g) => g.contains(el))) continue;
-    const w = el.closest<HTMLElement>(WORLD_SEL);
-    if (w && !ignore.includes(w)) return w.dataset.skin || WORLD_SKIN[[...w.classList].find((c) => c in WORLD_SKIN) || ""] || "dark";
+  wire();
+  if (worldsStale) mapWorlds();
+  const dy = y + scrollY, dx = x + scrollX;
+  let best: World | null = null;
+  for (const w of worlds) {
+    if (dy < w.t || dy >= w.b || dx < w.l || dx >= w.r) continue;
+    if (ignore.some((g) => g === w.el || g.contains(w.el))) continue;
+    if (!best || w.area < best.area) best = w;
   }
-  return "dark";
+  return best ? best.skin : "dark";
 }
 
 /* ---------- sticky local nav: highlights the section in view ----------

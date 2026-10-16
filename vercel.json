@@ -3,18 +3,105 @@
   "outputDirectory": "dist",
   "cleanUrls": false,
   "redirects": [
-    { "source": "/solutions/:path*", "destination": "/business/", "permanent": true },
-    { "source": "/services/:path*", "destination": "/enterprise/", "permanent": true },
-    { "source": "/blog/:path*", "destination": "/verantis/#insights", "permanent": true },
-    { "source": "/about", "destination": "/verantis/", "permanent": true },
-    { "source": "/practice(.html)?", "destination": "/verantis/", "permanent": true },
-    { "source": "/explore(.html)?", "destination": "/app/", "permanent": true },
-    { "source": "/platform(.html)?", "destination": "/app/", "permanent": true },
-    { "source": "/pain-points(.html)?", "destination": "/app/#view=pain", "permanent": true },
-    { "source": "/approach(.html)?", "destination": "/enterprise/#approach", "permanent": true }
+    {
+      "source": "/solutions/:path*",
+      "destination": "/business/",
+      "permanent": true
+    },
+    {
+      "source": "/services/:path*",
+      "destination": "/enterprise/",
+      "permanent": true
+    },
+    {
+      "source": "/blog/:path*",
+      "destination": "/verantis/#insights",
+      "permanent": true
+    },
+    {
+      "source": "/about",
+      "destination": "/verantis/",
+      "permanent": true
+    },
+    {
+      "source": "/practice(.html)?",
+      "destination": "/verantis/",
+      "permanent": true
+    },
+    {
+      "source": "/explore(.html)?",
+      "destination": "/app/",
+      "permanent": true
+    },
+    {
+      "source": "/platform(.html)?",
+      "destination": "/app/",
+      "permanent": true
+    },
+    {
+      "source": "/pain-points(.html)?",
+      "destination": "/app/#view=pain",
+      "permanent": true
+    },
+    {
+      "source": "/approach(.html)?",
+      "destination": "/enterprise/#approach",
+      "permanent": true
+    },
+    {
+      "source": "/about/:path*",
+      "destination": "/verantis/",
+      "permanent": true
+    }
   ],
   "headers": [
-    { "source": "/assets/(.*)", "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }] },
-    { "source": "/media/(.*)", "headers": [{ "key": "Cache-Control", "value": "public, max-age=604800, stale-while-revalidate=2592000" }] }
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "Permissions-Policy",
+          "value": "camera=(), microphone=(), geolocation=()"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        }
+      ]
+    },
+    {
+      "source": "/assets/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    },
+    {
+      "source": "/media/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=604800, stale-while-revalidate=2592000"
+        }
+      ]
+    },
+    {
+      "source": "/data/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=3600"
+        }
+      ]
+    }
   ]
 }

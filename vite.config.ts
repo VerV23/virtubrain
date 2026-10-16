@@ -1,6 +1,6 @@
 import { defineConfig, type Plugin } from "vite";
 import preact from "@preact/preset-vite";
-import { readFileSync } from "node:fs";
+import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 
 /* Multi-page static site. Every page is a real HTML file, so every URL loads directly
@@ -33,14 +33,18 @@ function seo(): Plugin {
         const url = SITE + (route === "/404.html" ? "/" : route);
         const title = /<title>([^<]*)<\/title>/.exec(html)?.[1] ?? "VirtuBrain by Verantis";
         const desc = /<meta name="description" content="([^"]*)"/.exec(html)?.[1] ?? "";
-        const img = `${SITE}/og.jpg`;
+        const slug = route.replace(/\//g, "") || "home";
+        const img = existsSync(resolve(ROOT, `public/og-${slug}.jpg`)) ? `${SITE}/og-${slug}.jpg` : `${SITE}/og.jpg`;
+        // preload the brand font so headlines don't swap late on slow connections
+        const font = ctx.bundle && Object.keys(ctx.bundle).find((k) => /schibsted-grotesk-latin-wght-normal-[\w-]+\.woff2$/.test(k));
         const tags = [
           route === "/404.html" ? `<meta name="robots" content="noindex">` : `<link rel="canonical" href="${url}">`,
           `<meta property="og:url" content="${url}">`,
           `<meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">`,
-          `<meta property="og:image:alt" content="A tower of thirteen engraved glass plates beside the line: Find the step where your operating model breaks.">`,
+          `<meta property="og:image:alt" content="${slug === "business" ? "A bakery owner reading a customer message on her phone, beside the line: Answer customers at any hour." : "A tower of thirteen engraved glass plates beside the line: Find the step where your operating model breaks."}">`,
           `<meta name="twitter:title" content="${title}"><meta name="twitter:description" content="${desc}"><meta name="twitter:image" content="${img}">`,
         ];
+        if (font) tags.unshift(`<link rel="preload" href="/${font}" as="font" type="font/woff2" crossorigin>`);
         const org = { "@type": "Organization", "@id": `${SITE}/#verantis`, name: "Verantis", url: `${SITE}/verantis/`,
           description: "Operating-model advisory practice for finance, HR and shared services.", areaServed: ["PH", "US", "SG"],
           founder: { "@type": "Person", name: "Ver Villarico" }, address: { "@type": "PostalAddress", addressLocality: "Manila", addressCountry: "PH" } };

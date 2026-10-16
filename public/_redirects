@@ -16,3 +16,11 @@
 /pain-points.html /app/#view=pain       301
 /approach       /enterprise/#approach   301
 /approach.html  /enterprise/#approach   301
+/about/*        /verantis/              301
+/about.html     /verantis/              301
+/solutions.html /business/              301
+/services.html  /enterprise/            301
+/blog.html      /verantis/#insights     301
+/contact.html   /contact/               301
+/explore/*      /app/                   301
+/pain-points/*  /app/#view=pain         301

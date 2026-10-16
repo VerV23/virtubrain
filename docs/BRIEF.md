@@ -227,3 +227,22 @@ Content and honesty conventions (all pages and the app):
   run and how evidence is stored in the written scope, before anyone touches your systems." and "How is it priced?" -> "We quote in
   writing after the first call, against the scope we agree. No quote depends on promised savings."
 - The zone story in one line: "Sort each step by how its output can be checked."
+
+## 10. Round 3 decisions
+
+Foundation (lead, committed):
+- `onFrame({ read, write })` in `src/lib/ui.ts`: all reads run before all writes across the page; a plain function still works
+  (runs after). Frames are skipped when neither scroll nor size changed; call `requestFrame()` after content changes size.
+  Convert your scroll work to the two-phase form.
+- `skinAt(x, y, ignore)` now uses a cached map of world sections (no hit-testing per frame). The header uses it.
+- Films load the full frame set only after the reader starts scrolling into the film (or after 6 s idle on a fast connection).
+- Brand font is preloaded; `favicon.ico`, `og-business.jpg` (used automatically for /business/: any `public/og-<slug>.jpg` is
+  picked up), sitemap lastmod, more 301s and Vercel headers exist.
+
+Shared wording (use exactly, everywhere including the app):
+- Standard pattern: "a standard five-step pattern: confirm the inputs, do the task, check the output, decide whether it is
+  complete, then log and hand off." Short form in tight UI: "standard five-step pattern".
+- Flagships: "13 of 142 processes are flagships. In each one, one task carries curated, step-by-step detail." Never "curated detail
+  for every step".
+- Body copy says "failure points" ("362 illustrative failure points"); the feature is called the "Pain-point library".
+- When a step's text equals its task name, show "Step N of 5: the task itself".

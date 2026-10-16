@@ -4,7 +4,7 @@
    runs one rAF loop (reads first, then writes) instead of many competing ones. */
 import { hydrateImages, hydrateLoops } from "./media";
 import { initFilms } from "./film";
-import { onFrame } from "./ui";
+import { onFrame, skinAt } from "./ui";
 
 export function boot() {
   document.documentElement.classList.add("js");
@@ -24,7 +24,7 @@ function initNav() {
   if (!nav) return;
   const btn = nav.querySelector<HTMLButtonElement>(".nav-toggle")!;
   const links = nav.querySelector<HTMLElement>("#nav-links")!;
-  const outside = () => [...document.querySelectorAll<HTMLElement>("main, footer, .lnav, [data-lnav]")].filter((el) => !nav.contains(el));
+  const outside = () => [...document.querySelectorAll<HTMLElement>("main, footer, .lnav, [data-lnav], .skip")].filter((el) => !nav.contains(el));
   const setOpen = (open: boolean, restoreFocus = true) => {
     nav.classList.toggle("is-open", open);
     btn.setAttribute("aria-expanded", String(open));
@@ -42,22 +42,18 @@ function initNav() {
   // The bar tucks away while reading down and returns on any upward scroll, and takes the colour of
   // the section beneath it (dark, light or navy) the way apple.com's bar does.
   let last = scrollY, skin = "";
-  onFrame(() => {
-    const y = scrollY;
-    const open = nav.classList.contains("is-open");
-    if (!open && !nav.matches(":focus-within")) {
-      if (y > 320 && y > last + 4) nav.classList.add("is-hidden");
-      else if (y < last - 4 || y <= 320) nav.classList.remove("is-hidden");
-    }
-    last = y;
-    const probeY = nav.getBoundingClientRect().height + 2;
-    let next = "dark";
-    for (const el of document.elementsFromPoint(innerWidth / 2, probeY)) {
-      if (nav.contains(el) || (el as HTMLElement).closest?.(".lnav, [data-lnav]")) continue;
-      const w = (el as HTMLElement).closest?.(".w-void, .w-ink, .w-teal, .w-fog, .w-light, .w-paper, .w-navy, [data-skin]") as HTMLElement | null;
-      if (w) { next = w.dataset.skin || WORLD_SKIN[[...w.classList].find((c) => c in WORLD_SKIN) || ""] || "dark"; break; }
-    }
-    if (next !== skin) { skin = next; nav.dataset.skin = next; document.documentElement.dataset.navSkin = next; }
+  const chrome = () => [nav, ...document.querySelectorAll(".lnav, [data-lnav]")];
+  onFrame({
+    read: () => ({ y: scrollY, h: nav.offsetHeight, focus: nav.matches(":focus-within") }),
+    write: ({ y, h, focus }: { y: number; h: number; focus: boolean }) => {
+      if (!nav.classList.contains("is-open") && !focus) {
+        if (y > 320 && y > last + 4) nav.classList.add("is-hidden");
+        else if (y < last - 4 || y <= 320) nav.classList.remove("is-hidden");
+      }
+      last = y;
+      const next = skinAt(innerWidth / 2, Math.max(1, h - 4), chrome());
+      if (next !== skin) { skin = next; nav.dataset.skin = next; document.documentElement.dataset.navSkin = next; }
+    },
   });
 }
 

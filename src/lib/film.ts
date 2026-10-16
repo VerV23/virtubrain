@@ -35,7 +35,7 @@ type FrameSet = { imgs: (HTMLImageElement | undefined)[]; queued: Set<number> };
 class Film {
   el: HTMLElement; canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D; meta: FilmMeta;
   sets: Record<"d" | "m", FrameSet> = { d: { imgs: [], queued: new Set() }, m: { imgs: [], queued: new Set() } };
-  beats: { el: HTMLElement; a: number; b: number; f: number; vis: boolean; focusables: HTMLElement[] }[] = [];
+  beats: { el: HTMLElement; a: number; b: number; f: number; vis: boolean; focusables: { el: HTMLElement; tab: string | null }[] }[] = [];
   bar: HTMLElement | null; p = -1; drawn = -1; drawnSet = ""; set: "d" | "m"; phase = 0; inflight = 0; queue: number[] = [];
   fit: "cover" | "contain"; focusX: number; focusY: number; bg = "#000";
 
@@ -51,7 +51,7 @@ class Film {
     this.set = this.wantSet();
     this.beats = [...el.querySelectorAll<HTMLElement>(".beat")].map((b) => ({
       el: b, a: parseFloat(b.dataset.in || "0"), b: parseFloat(b.dataset.out || "1"), f: parseFloat(b.dataset.fade || "0.06"), vis: true,
-      focusables: [...b.querySelectorAll<HTMLElement>("a[href], button, input, select, textarea, [tabindex]")],
+      focusables: [...b.querySelectorAll<HTMLElement>("a[href], button, input, select, textarea, [tabindex]")].map((el) => ({ el, tab: el.getAttribute("tabindex") })),
     }));
     this.readBg();
     new ResizeObserver(() => this.resize()).observe(this.canvas);
@@ -73,7 +73,8 @@ class Film {
       for (let i = 8; i < N - 1; i += 8) order.push(i);
       this.queue.push(...order.filter((i) => !fs.queued.has(i)));
       const idle = (window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => void }).requestIdleCallback;
-      setTimeout(() => (idle ? idle(() => this.load(2), { timeout: 4000 }) : this.load(2)), 2500);
+      const fast = !conn || (conn as { downlink?: number }).downlink === undefined || ((conn as { downlink?: number }).downlink ?? 0) >= 5;
+      if (fast) setTimeout(() => (idle ? idle(() => this.load(2), { timeout: 6000 }) : this.load(2)), 6000);
     } else {
       // everything else, nearest to where the reader is first
       const t = this.target();
@@ -146,7 +147,7 @@ class Film {
 
   /* write phase */
   apply(p: number, near: boolean) {
-    if (near && this.phase < 2 && !lowData) this.load(2);
+    if (near && p > 0.002 && this.phase < 2 && !lowData) this.load(2);
     if (p === this.p) return;
     this.p = p;
     this.el.style.setProperty("--p", p.toFixed(4));
@@ -162,7 +163,11 @@ class Film {
       if (vis !== b.vis) {
         b.vis = vis;
         b.el.classList.toggle("is-off", !vis);
-        b.focusables.forEach((f) => (vis ? f.removeAttribute("tabindex") : f.setAttribute("tabindex", "-1")));
+        b.focusables.forEach((f) => {
+          if (!vis) f.el.setAttribute("tabindex", "-1");
+          else if (f.tab === null) f.el.removeAttribute("tabindex");
+          else f.el.setAttribute("tabindex", f.tab);
+        });
       }
     }
     this.el.dispatchEvent(new CustomEvent("film:progress", { detail: p }));
@@ -175,9 +180,9 @@ export function initFilms(root: ParentNode = document) {
   if (!films.length) return [];
   if (reduce.matches) { films.forEach((f) => f.classList.add("is-static")); return []; }
   const list = films.filter((f) => FILMS[f.dataset.film!]).map((f) => new Film(f));
-  onFrame(() => {
-    const m = list.map((f) => f.measure());   // all reads first
-    list.forEach((f, i) => f.apply(m[i].p, m[i].near)); // then all writes
+  onFrame({
+    read: () => list.map((f) => f.measure()),
+    write: (m: { p: number; near: boolean }[]) => list.forEach((f, i) => f.apply(m[i].p, m[i].near)),
   });
   return list;
 }
