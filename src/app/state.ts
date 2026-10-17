@@ -102,7 +102,7 @@ function remember(r: Route) {
   if (r.view === "xray") { memory.xray = { basis: r.basis, only: r.only }; if (r.p) memory.moves.set(movesKey(r.fn, r.p), r.z); }
 }
 
-export function go(patch: Partial<Route>, opts: { replace?: boolean } = {}) {
+export function go(patch: Partial<Route>, opts: { replace?: boolean; focus?: boolean } = {}) {
   const cur = route.value;
   remember(cur);
   let base: Route = { ...cur, badView: undefined };
@@ -119,8 +119,6 @@ export function go(patch: Partial<Route>, opts: { replace?: boolean } = {}) {
       if (patch.view === "xray") { base.basis = memory.xray.basis || "core"; base.only = !!memory.xray.only; }
       base.s = undefined;
     }
-    // an Undo offer belongs to the view it was made in
-    if (toast.value?.action) toast.value = null;
   }
   const next: Route = { ...base, ...patch };
   const procChanged = next.p !== cur.p || next.fn !== cur.fn;
@@ -135,6 +133,7 @@ export function go(patch: Partial<Route>, opts: { replace?: boolean } = {}) {
     else history.pushState({ from: location.hash }, "", h);
   }
   route.value = parse(h);
+  if (opts.focus) focusHeading();
 }
 
 /** In-app back: pop history if the previous entry is where we want to go, otherwise push it. */
@@ -268,12 +267,24 @@ export const zoneBenchmark = computed(() => {
   return { all: { n: all, total: nAll }, core: { n: core, total: nCore }, order: ZONE_ORDER };
 });
 
+// Sort every step once while the browser is idle, so the first X-ray opens without that work.
+effect(() => {
+  if (!taxIdx.value) return;
+  const warm = () => { void zoneBenchmark.value; };
+  if ("requestIdleCallback" in window) (window as Window & { requestIdleCallback: (f: () => void, o?: { timeout: number }) => number }).requestIdleCallback(warm, { timeout: 2500 });
+  else setTimeout(warm, 600);
+});
+
 /* ---- Small UI signals ------------------------------------------------------------------------ */
-export const toast = signal<{ id: number; text: string; tone?: "ok" | "warn"; action?: { label: string; run: () => void } } | null>(null);
+/** A toast with an action (Undo) belongs to the view and process it was offered in: `scope` records them and
+    any route change that leaves them (a tab, a link, Back or Forward) clears the offer. */
+export const toast = signal<{ id: number; text: string; tone?: "ok" | "warn"; action?: { label: string; run: () => void }; scope?: string } | null>(null);
+const scopeOf = (r: Route) => `${r.view}|${r.fn || ""}|${r.p || ""}`;
+effect(() => { const sc = scopeOf(route.value); const t = toast.peek(); if (t?.scope && t.scope !== sc) toast.value = null; });
 let toastTimer = 0;
 export function say(text: string, o: { tone?: "ok" | "warn"; action?: { label: string; run: () => void } } = {}) {
   clearTimeout(toastTimer);
-  batch(() => { toast.value = { id: Date.now(), text, ...o }; });
+  batch(() => { toast.value = { id: Date.now(), text, ...o, scope: o.action ? scopeOf(route.peek()) : undefined }; });
   toastTimer = window.setTimeout(() => { toast.value = null; }, o.action ? 6000 : o.tone === "warn" ? 5200 : 3200);
 }
 /** Single-character shortcuts (/, ?, E, P, X) can be switched off (WCAG 2.1.4). */

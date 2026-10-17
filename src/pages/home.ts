@@ -5,14 +5,17 @@
 import "../styles/base.css";
 import "../styles/home.css";
 import { boot } from "../lib/site";
-import { onFrame, initLocalNav, initGalleries, initTabs, initCounts, initLines, initInk } from "../lib/ui";
+import { onFrame, skinAt, initLocalNav, initGalleries, initTabs, initCounts, initLines, initInk } from "../lib/ui";
 import { INDUSTRIES, COUNTRIES, CATEGORY_LABELS, type Industry, type Country, type Zone } from "../lib/data";
 import catalog from "../media-catalog.json";
 
 const $ = <T extends Element = HTMLElement>(s: string, r: ParentNode = document) => r.querySelector<T>(s);
 const $$ = <T extends Element = HTMLElement>(s: string, r: ParentNode = document) => [...r.querySelectorAll<T>(s)];
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
-const fmt = (n: number) => n.toLocaleString("en-US");
+const NF = new Intl.NumberFormat("en-US");
+const fmt = (n: number) => NF.format(n);
+const conn = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
+const lowData = !!conn && (conn.saveData === true || ["slow-2g", "2g", "3g"].includes(conn.effectiveType || ""));
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
 const easeIO = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
@@ -24,6 +27,11 @@ function whenNear(el: Element | null, fn: () => void, margin = "900px 0px") {
   const io = new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) { io.disconnect(); fn(); } }, { rootMargin: margin });
   io.observe(el);
 }
+/** A small inline "Try again" control for a failed load. */
+function retry(el: Element, msg: string, again: () => void) {
+  el.innerHTML = `${esc(msg)} <button type="button" class="retry">Try again</button>`;
+  el.querySelector("button")!.addEventListener("click", again, { once: true });
+}
 /** Soft crossfade for content that has just been replaced. */
 function fadeIn(els: (Element | null)[]) {
   if (reduce) return;
@@ -33,9 +41,9 @@ function fadeIn(els: (Element | null)[]) {
 /* ---------------------------------------------------------------------------------------------
    The build-time digest (scripts/build-summary.ts): the home page never downloads the full taxonomy
    --------------------------------------------------------------------------------------------- */
-type Rec = { id: string; fn: string; fnName: string; pid: string; pname: string; tid: string; tname: string; step: number; stepText: string; title: string; sev: string; cat: string };
+type Rec = { id: string; fn: string; fnName: string; pid: string; pname: string; tid: string; tname: string; step: number; of: number; self: boolean; stepText: string; title: string; sev: string; cat: string };
 type Lens = { fn: string; fnName: string; id: string; short: string; name: string; description: string; industry: Record<Industry, string>; country: Record<Country, string>; systems: string[]; kpis: string[] };
-type ZoneSum = { fn: string; fnName: string; id: string; name: string; total: number } & Record<Zone, number>;
+type ZoneSum = { fn: string; fnName: string; id: string; name: string; total: number; std: number } & Record<Zone, number>;
 type Summary = { home: { lens: Lens[]; zones: ZoneSum[]; records: Record<string, Rec[]>; featured: string } };
 let summaryP: Promise<Summary> | null = null;
 const getSummary = () => (summaryP ||= fetch("/data/summary.json", { headers: { Accept: "application/json" } })
@@ -95,101 +103,140 @@ function monolithFilm() {
 }
 
 /* =============================================================================================
-   One scroll-linked pass for the page (shared onFrame loop): all reads, then all writes.
-   - the local nav takes the skin (dark, light, navy) of whatever sits beneath it, so the global
-     header, which probes the element under itself, follows the same skin
+   One scroll-linked pass for the page, on the shared onFrame loop in two phases (all reads across the
+   page run before any writes):
+   - the local nav takes the skin (dark, light, navy) of the world beneath it, from ui.ts's cached map,
+     with the same rule the global header uses, so the two bars always agree
    - gentle parallax on a few large stills
    ============================================================================================= */
-const WORLD_SKIN: Record<string, string> = { "w-void": "dark", "w-ink": "dark", "w-teal": "dark", "w-fog": "light", "w-light": "light", "w-paper": "light", "w-navy": "navy" };
 function pageFrame() {
   const lnav = $<HTMLElement>("[data-lnav]");
   const imgs = reduce ? [] : $$<HTMLImageElement>("img[data-parallax]");
+  const chrome: Element[] = lnav ? [lnav, ...$$(".site-nav")] : [];
   let skin = lnav?.dataset.skin ?? "dark";
-  onFrame(() => {
-    // reads
-    const vh = innerHeight;
-    let next = skin;
-    if (lnav) {
-      const r = lnav.getBoundingClientRect();
-      if (r.bottom > 0 && r.top < vh) {
-        for (const el of document.elementsFromPoint(innerWidth / 2, Math.min(vh - 1, r.bottom + 2))) {
-          if (lnav.contains(el) || el.closest(".site-nav")) continue;
-          const w = el.closest<HTMLElement>(".w-void, .w-ink, .w-teal, .w-fog, .w-light, .w-paper, .w-navy, [data-skin]");
-          if (w) { next = w.dataset.skin || WORLD_SKIN[[...w.classList].find((c) => c in WORLD_SKIN) || ""] || "dark"; break; }
-        }
+  type Read = { next: string; moves: [HTMLImageElement, number][] };
+  onFrame({
+    read: (): Read => {
+      const vh = innerHeight;
+      let next = skin;
+      if (lnav) {
+        const b = lnav.getBoundingClientRect().bottom;
+        if (b > 0 && b < vh) next = skinAt(innerWidth / 2, b + 2, chrome);
       }
-    }
-    const moves: [HTMLImageElement, number][] = [];
-    for (const img of imgs) {
-      const r = img.parentElement!.getBoundingClientRect();
-      if (r.bottom < -100 || r.top > vh + 100) continue;
-      moves.push([img, ((r.top + r.height / 2) - vh / 2) / vh]);
-    }
-    // writes
-    if (lnav && next !== skin) { skin = next; lnav.dataset.skin = next; }
-    for (const [img, off] of moves) img.style.transform = `translate3d(0, ${(off * -5).toFixed(2)}%, 0) scale(1.12)`;
+      const moves: [HTMLImageElement, number][] = [];
+      for (const img of imgs) {
+        const r = img.parentElement!.getBoundingClientRect();
+        if (r.bottom < -100 || r.top > vh + 100) continue;
+        moves.push([img, ((r.top + r.height / 2) - vh / 2) / vh]);
+      }
+      return { next, moves };
+    },
+    write: ({ next, moves }: Read) => {
+      if (lnav && next !== skin) { skin = next; lnav.dataset.skin = next; }
+      for (const [img, off] of moves) img.style.transform = `translate3d(0, ${(off * -5).toFixed(2)}%, 0) scale(1.12)`;
+    },
   });
 }
 
+/* Bento stills sit on a quiet placeholder and fade in once loaded, so a slow image never pops in. */
+function fadeStills() {
+  if (reduce) return;
+  for (const img of $$<HTMLImageElement>(".bento .bt-media img")) {
+    if (img.complete && img.naturalWidth) continue;
+    img.classList.add("is-pending");
+    img.addEventListener("load", () => img.classList.remove("is-pending"), { once: true });
+  }
+}
+
 /* =============================================================================================
-   2. The monolith tile: the film's own frames play forward on a small canvas when pressed
+   2. The monolith tile: the film's own frames play on a small canvas when pressed.
+   - mobile-size frames (720px) unless the tile's backing store is much wider; 30 frames over ~1.1 s
+   - reduced motion: only the first and last frames, swapped without animation, and no auto-open
+   - Save-Data or a slow connection: the poster only, and no control
+   - the button's label and state always follow the frame actually on the canvas
    ============================================================================================= */
 function opTile() {
   const tile = $<HTMLElement>("[data-op]");
   if (!tile) return;
   const btn = $<HTMLButtonElement>(".op-btn", tile)!, lbl = $(".op-lbl", tile)!;
+  if (lowData) { btn.hidden = true; return; }
   const canvas = $<HTMLCanvasElement>(".op-canvas", tile)!, ctx = canvas.getContext("2d", { alpha: false })!;
   const meta = (catalog.films as Record<string, { frames: number; base: string }>).monolith;
-  // the same frame set the monolith film uses, so the browser cache serves both; 30 frames over ~1.1s
-  const set = innerWidth * Math.min(devicePixelRatio || 1, 2) > 1100 ? "d" : "m";
-  const COUNT = 30;
-  const ids = Array.from({ length: COUNT }, (_, i) => Math.round((i * (meta.frames - 1)) / (COUNT - 1)));
+  const N = reduce ? 2 : 30;
+  const ids = Array.from({ length: N }, (_, i) => Math.round((i * (meta.frames - 1)) / (N - 1)));
+  const LAST = N - 1;
   const imgs: (HTMLImageElement | undefined)[] = [];
-  let ready: Promise<void> | null = null, pos = 0, raf = 0, open = false, touched = false, bg = "#d9e1e3";
+  let ready: Promise<boolean> | null = null, pos = 0, shown = -1, raf = 0, touched = false, bg = "#d9e1e3";
 
-  const load = () => (ready ||= Promise.all(ids.map((id, i) => {
-    const im = new Image(); im.decoding = "async"; im.src = `${meta.base}/${set}/${String(id).padStart(3, "0")}.webp`;
-    return im.decode().then(() => { imgs[i] = im; }).catch(() => {});
-  })).then(() => { bg = getComputedStyle(tile).getPropertyValue("--bg").trim() || bg; }));
+  const load = () => (ready ||= (() => {
+    const r = canvas.getBoundingClientRect();
+    const set = r.width * Math.min(devicePixelRatio || 1, 2) > 1000 ? "d" : "m";
+    return Promise.all(ids.map((id, i) => {
+      const im = new Image(); im.decoding = "async"; im.src = `${meta.base}/${set}/${String(id).padStart(3, "0")}.webp`;
+      return im.decode().then(() => { imgs[i] = im; }).catch(() => {});
+    })).then(() => {
+      bg = getComputedStyle(tile).getPropertyValue("--bg").trim() || bg;
+      const ok = !!imgs[0] && !!imgs[LAST];
+      if (!ok) ready = null; // a later press tries again
+      return ok;
+    });
+  })());
   const size = () => {
     const r = canvas.getBoundingClientRect(), dpr = Math.min(devicePixelRatio || 1, 2);
     canvas.width = Math.max(1, Math.round(r.width * dpr)); canvas.height = Math.max(1, Math.round(r.height * dpr));
   };
+  /** draws the nearest decoded frame at or below k; returns the index drawn */
   const draw = (k: number) => {
     let i = Math.round(k);
     while (i > 0 && !imgs[i]) i--;
     const im = imgs[i];
-    if (!im) return;
+    if (!im) return shown;
     const W = canvas.width, H = canvas.height, s = Math.max(W / im.naturalWidth, H / im.naturalHeight);
     const w = im.naturalWidth * s, h = im.naturalHeight * s;
     ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
     ctx.drawImage(im, (W - w) / 2, (H - h) / 2, w, h);
     tile.classList.add("is-live");
+    shown = i;
+    return i;
   };
-  new ResizeObserver(() => { size(); if (tile.classList.contains("is-live")) draw(pos); }).observe(canvas);
+  const label = (open: boolean) => {
+    tile.dataset.open = String(open); btn.setAttribute("aria-pressed", String(open)); lbl.textContent = open ? "Close it" : "Open it";
+  };
+  new ResizeObserver(() => { size(); if (shown >= 0) draw(pos); }).observe(canvas);
   const play = (to: number) => {
     cancelAnimationFrame(raf);
-    const from = pos, dur = reduce ? 0 : 1100 * Math.abs(to - from) / (COUNT - 1);
-    if (!dur) { pos = to; draw(pos); return; }
+    const from = pos, dur = reduce ? 0 : 1100 * Math.abs(to - from) / LAST;
+    const finish = () => { label(shown === LAST); btn.removeAttribute("aria-busy"); };
+    if (!dur) { pos = to; draw(pos); finish(); return; }
     const t0 = performance.now();
+    let started = false;
     const step = (t: number) => {
       const k = clamp01((t - t0) / dur);
       pos = from + (to - from) * easeIO(k);
       draw(pos);
-      if (k < 1) raf = requestAnimationFrame(step);
+      // the label turns as soon as the canvas is visibly on its way
+      if (!started && shown !== Math.round(from)) { started = true; label(to === LAST); }
+      if (k < 1) raf = requestAnimationFrame(step); else finish();
     };
     raf = requestAnimationFrame(step);
   };
-  const set_ = (o: boolean) => {
-    open = o;
-    tile.dataset.open = String(o); btn.setAttribute("aria-pressed", String(o)); lbl.textContent = o ? "Close it" : "Open it";
-    load().then(() => { size(); play(o ? COUNT - 1 : 0); });
+  const toggle = (open: boolean) => {
+    btn.setAttribute("aria-busy", "true");
+    load().then((ok) => {
+      if (!ok) { btn.removeAttribute("aria-busy"); return; }
+      size();
+      if (shown < 0) draw(pos);
+      play(open ? LAST : 0);
+    });
   };
-  btn.addEventListener("click", () => { touched = true; set_(!open); });
+  btn.addEventListener("click", () => { touched = true; toggle(tile.dataset.open !== "true"); });
   whenNear(tile, () => { load(); }, "400px 0px");
   if (reduce) return;
+  // opens by itself once, after its frames are decoded and the tile is mostly on screen
   const io = new IntersectionObserver((es) => {
-    if (es[0].isIntersecting) { io.disconnect(); load().then(() => setTimeout(() => { if (!touched) set_(true); }, 500)); }
+    if (!es[0].isIntersecting) return;
+    io.disconnect();
+    load().then((ok) => { if (ok) setTimeout(() => { if (!touched) toggle(true); }, 500); });
   }, { threshold: 0.7 });
   io.observe(tile);
 }
@@ -225,24 +272,25 @@ function calibrate() {
     fadeIn(changed === "proc" ? [$(".out-head", root), $(".out-lens", root), $(".out-meta", root)]
       : changed === "ind" ? [o("ind").parentElement] : [o("cty").parentElement]);
   };
-  const apply = (changed: "proc" | "ind" | "cty") => {
-    if (lens) { render(changed); return; }
+  const press = (group: HTMLElement, b: HTMLButtonElement) => $$("button[data-v]", group).forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+  const choose = (group: HTMLElement, b: HTMLButtonElement) => {
+    const kind = group.dataset.ctl as "proc" | "ind" | "cty", v = b.dataset.v!;
+    const commit = () => {
+      press(group, b);
+      if (kind === "proc") state.proc = +v; else if (kind === "ind") state.ind = v as Industry; else state.cty = v as Country;
+      render(kind);
+    };
+    if (lens) { commit(); return; }
+    // the choice shows as pressed only once its notes are on screen; a failed load leaves the old one pressed
     status.textContent = "Loading…";
-    getSummary().then((s) => { lens = s.home.lens; status.textContent = ""; render("proc"); })
-      .catch(() => {
-        status.innerHTML = `Couldn't load the notes. <button type="button">Try again</button>`;
-        status.querySelector("button")!.addEventListener("click", () => apply(changed));
-      });
+    getSummary().then((s) => { lens = s.home.lens; status.textContent = ""; commit(); })
+      .catch(() => retry(status, "Couldn't load the notes.", () => choose(group, b)));
   };
   $$("[data-ctl]", root).forEach((group) => {
-    const kind = group.dataset.ctl as "proc" | "ind" | "cty";
     group.addEventListener("click", (e) => {
       const b = (e.target as Element).closest<HTMLButtonElement>("button[data-v]");
       if (!b || b.getAttribute("aria-pressed") === "true") return;
-      $$("button[data-v]", group).forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
-      const v = b.dataset.v!;
-      if (kind === "proc") state.proc = +v; else if (kind === "ind") state.ind = v as Industry; else state.cty = v as Country;
-      apply(kind);
+      choose(group, b);
     });
   });
 }
@@ -276,22 +324,25 @@ function library() {
         <li><span class="mono">Function</span><span>${esc(p.fnName)}</span></li>
         <li><span class="mono">Process</span><span><b class="mono">${esc(p.pid)}</b> ${esc(p.pname)}</span></li>
         <li><span class="mono">Task</span><span><b class="mono">${esc(p.tid)}</b> ${esc(p.tname)}</span></li>
-        <li class="rec-step sev-${p.sev}"><span class="mono">Step ${p.step + 1}</span><span>${esc(p.stepText)}</span></li>
+        <li class="rec-step sev-${p.sev}"><span class="mono">Step ${p.step + 1} of ${p.of}</span><span>${p.self ? "The task itself" : esc(p.stepText)}</span></li>
       </ol>`;
     // s= is the app's step id (task id + 1-based step), so the link lands on the step itself
     (r("link") as HTMLAnchorElement).href = `/app/#view=explore&fn=${encodeURIComponent(p.fn)}&p=${encodeURIComponent(p.pid)}&s=${encodeURIComponent(`${p.tid}.${p.step + 1}`)}`;
     fadeIn([r("body")]);
   };
+  const shownCount = () => r("count").textContent;
   const go = (fn: () => void) => {
     if (records) { fn(); render(); return; }
+    const before = shownCount();
     r("count").textContent = "Loading…";
-    getSummary().then((s) => { records = s.home.records; fn(); render(); }).catch(() => { r("count").textContent = "Couldn't load records"; });
+    getSummary().then((s) => { records = s.home.records; fn(); render(); })
+      .catch(() => retry(r("count"), "Couldn't load records.", () => { r("count").textContent = before; go(fn); }));
   };
   catsEl.addEventListener("click", (e) => {
     const b = (e.target as Element).closest<HTMLButtonElement>("button[data-cat]");
     if (!b || b.getAttribute("aria-pressed") === "true") return;
-    $$("button[data-cat]", catsEl).forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
-    go(() => { cat = b.dataset.cat!; idx = 0; });
+    // the category shows as pressed only once its records are on screen
+    go(() => { $$("button[data-cat]", catsEl).forEach((x) => x.setAttribute("aria-pressed", String(x === b))); cat = b.dataset.cat!; idx = 0; });
   });
   const len = () => records?.[cat]?.length ?? 1;
   $("[data-r-prev]", root)!.addEventListener("click", () => go(() => { idx = (idx - 1 + len()) % len(); }));
@@ -299,7 +350,7 @@ function library() {
 }
 
 /* =============================================================================================
-   5b. Zone map: an example zone map per process, plus the live first-pass sort of its real steps
+   5b. Zone map: an example zone map per process, plus the live first-pass sort of its core steps
    ============================================================================================= */
 type Item = [string, string];
 const MAPS: [Item[], Item[], Item[]][] = [
@@ -327,17 +378,24 @@ function zoneMap() {
 
   const drawSort = (i: number) => {
     const z = zones![i];
-    zs("fn").textContent = z.fnName; zs("id").textContent = z.id; zs("name").textContent = z.name;
+    zs("total").textContent = String(z.total); zs("fn").textContent = z.fnName; zs("id").textContent = z.id; zs("name").textContent = z.name;
     (zs("link") as HTMLAnchorElement).href = `/app/#view=xray&fn=${encodeURIComponent(z.fn)}&p=${encodeURIComponent(z.id)}`;
     const bar = zs("bar");
     ZONE_KEYS.forEach((k, j) => {
       const seg = bar.children[j] as HTMLElement;
       seg.style.setProperty("--n", String(z[k]));
+      seg.classList.toggle("is-zero", z[k] === 0);
       seg.querySelector("b")!.textContent = String(z[k]);
     });
-    bar.setAttribute("aria-label", `${z.auto} auto, ${z.assist} assist and ${z.human} human steps out of ${z.total}`);
-    zs("key").innerHTML = ZONE_KEYS.map((k) => `<span class="z-${k}"><span class="dot"></span>${ZONE_LABEL[k]} ${z[k]}</span>`).join("") + `<span class="zsort-total">of ${z.total} steps</span>`;
+    bar.setAttribute("aria-label", `Auto ${z.auto}, Assist ${z.assist}, Human ${z.human} of ${z.total} core steps`);
+    zs("key").innerHTML = ZONE_KEYS.map((k) => `<span class="z-${k}"><span class="dot"></span>${ZONE_LABEL[k]} ${z[k]}</span>`).join("") + `<span class="zsort-total">${z.std} standard steps not counted</span>`;
     bar.parentElement!.style.opacity = "";
+    zs("status").textContent = "";
+  };
+  const fetchSort = (i: number) => {
+    zs("bar").parentElement!.style.opacity = "0.5";
+    getSummary().then((s) => { zones = s.home.zones; if (cur === i) drawSort(i); })
+      .catch(() => { zs("bar").parentElement!.style.opacity = ""; retry(zs("status"), "Couldn't load the sort for this process.", () => fetchSort(i)); });
   };
   box.addEventListener("tabs:change", (e) => {
     const i = (e as CustomEvent<{ index: number }>).detail.index;
@@ -349,8 +407,7 @@ function zoneMap() {
         MAPS[i][k].map(([b, s]) => `<li><b>${esc(b)}</b><span>${esc(s)}</span></li>`).join("")}</ul></div>`).join("");
     fadeIn($$(".zcol", cols));
     if (zones) { drawSort(i); fadeIn([zs("bar"), zs("key")]); return; }
-    zs("bar").parentElement!.style.opacity = "0.5";
-    getSummary().then((s) => { zones = s.home.zones; if (cur === i) drawSort(i); }).catch(() => {});
+    fetchSort(i);
   });
 }
 
@@ -381,6 +438,7 @@ initInk();
 initTabs();
 initGalleries();
 pageFrame();
+fadeStills();
 opTile();
 calibrate();
 library();

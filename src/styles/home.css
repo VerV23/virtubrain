@@ -6,11 +6,11 @@
 
 .home {
   --r-tile: 28px;
-  --lnav-h: 48px;
   --pad-tile: clamp(24px, 3vw, 40px);
 }
-@media (max-width: 760px) { .home { --r-tile: 22px; --lnav-h: 46px; } }
-html:has(body.home) { scroll-padding-top: calc(var(--nav-h) + var(--lnav-h) + 16px); }
+/* the local nav height lives on the root, where scroll-padding uses it, so focus and anchors clear both bars */
+html:has(body.home) { --lnav-h: 48px; scroll-padding-top: calc(var(--nav-h) + var(--lnav-h) + 16px); }
+@media (max-width: 760px) { .home { --r-tile: 22px; } html:has(body.home) { --lnav-h: 46px; } }
 
 .home .sec { padding-block: clamp(88px, 11vw, 168px); }
 .sec-head { display: grid; gap: 16px; margin-bottom: clamp(36px, 5vw, 72px); max-width: 62rem; }
@@ -42,8 +42,11 @@ html:has(body.home) { scroll-padding-top: calc(var(--nav-h) + var(--lnav-h) + 16
 .ln-armed .lines.in .ln > span { transform: none; }
 
 /* bridges: a gradient joins two worlds instead of a hard cut; the halves carry a skin for the header */
-.bridge { display: grid; grid-template-rows: 1fr 1fr; height: clamp(96px, 13vw, 210px); background: linear-gradient(to bottom, var(--from), var(--to)); }
-.bridge-sm { height: clamp(56px, 7vw, 120px); }
+/* short, with eased stops, so a light-to-dark join reads as a soft edge rather than a band of mid-grey */
+.bridge { display: grid; grid-template-rows: 1fr 1fr; height: clamp(80px, 8.4vw, 124px);
+  background: linear-gradient(to bottom, var(--from) 0%, color-mix(in oklab, var(--from) 94%, var(--to)) 15%, color-mix(in oklab, var(--from), var(--to)) 50%,
+    color-mix(in oklab, var(--from) 6%, var(--to)) 85%, var(--to) 100%); }
+.bridge-sm { height: clamp(64px, 6vw, 96px); }
 .bridge + .sec, .bridge + .film + .sec { padding-top: clamp(56px, 7vw, 112px); }
 
 /* =============================================================================================
@@ -211,8 +214,9 @@ html:has(.site-nav.is-hidden) .lnav { top: 0; }
   grid-template-rows: 310px 310px 480px 520px 500px; }
 .bt { position: relative; overflow: hidden; border-radius: var(--r-tile); background: var(--surface); isolation: isolate; display: flex; flex-direction: column;
   box-shadow: inset 0 0 0 1px var(--line); }
-.bt-media { position: absolute; inset: 0; z-index: -1; overflow: hidden; }
-.bt-media img { width: 100%; height: 100%; object-fit: cover; }
+.bt-media { position: absolute; inset: 0; z-index: -1; overflow: hidden; background: var(--surface-2); }
+.bt-media img { width: 100%; height: 100%; object-fit: cover; transition: opacity 700ms var(--ease-out); }
+.bt-media img.is-pending { opacity: 0; }
 .bt-body { padding: var(--pad-tile); display: grid; gap: 12px; align-content: start; position: relative; }
 .bt-title { font-size: var(--t-h2); line-height: 1.06; letter-spacing: -0.03em; font-weight: 650; text-wrap: balance; }
 .bt-title-sm { font-size: clamp(1.375rem, 1.1rem + 0.8vw, 1.875rem); line-height: 1.12; letter-spacing: -0.022em; }
@@ -256,6 +260,8 @@ html:has(.site-nav.is-hidden) .lnav { top: 0; }
 .op-ico::before, .op-ico::after { content: ""; position: absolute; left: 50%; top: 50%; width: 12px; height: 1.8px; margin: -0.9px 0 0 -6px; background: currentColor; border-radius: 1px; transition: transform var(--dur-2) var(--ease-out); }
 .op-ico::after { transform: rotate(90deg); }
 .bt-op[data-open="true"] .op-ico::after { transform: rotate(0deg); }
+.op-btn[aria-busy="true"] .op-ico { animation: op-wait 1s var(--ease-io) infinite alternate; }
+@keyframes op-wait { to { opacity: 0.45; } }
 
 .bt-an { grid-area: an; }
 .bt-an .bt-media { top: 44%; -webkit-mask-image: linear-gradient(to bottom, transparent, #000 34%); mask-image: linear-gradient(to bottom, transparent, #000 34%); }
@@ -282,10 +288,12 @@ html:has(.site-nav.is-hidden) .lnav { top: 0; }
 
 .bt-fl { grid-area: fl; }
 .bt-zn { grid-area: zn; }
-.bt-fl .bt-media { bottom: 42%; -webkit-mask-image: linear-gradient(to top, transparent, #000 30%); mask-image: linear-gradient(to top, transparent, #000 30%); }
+/* the image sits in its own band above the copy, so the copy never runs over the engraving */
+.bt-fl .bt-media { position: relative; inset: auto; flex: 1 1 auto; min-height: 120px; max-height: 220px; z-index: 0;
+  -webkit-mask-image: linear-gradient(to top, transparent, #000 45%); mask-image: linear-gradient(to top, transparent, #000 45%); }
 /* atlas-diptych is two frames stacked; show only its lower macro (the engraved route in red) */
 .bt-fl .bt-media img { height: 200%; object-position: 50% 100%; transform: translateY(-50%); }
-.bt-fl .bt-body { margin-top: auto; }
+.bt-fl .bt-body { margin-top: -20px; padding-top: 0; }
 .bt-fl .eyebrow { display: flex; align-items: baseline; }
 .bt-flags { display: grid; gap: 8px; margin-top: 4px; font-size: var(--t-small); color: var(--fg); }
 .bt-flags li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; }
@@ -351,7 +359,7 @@ html:has(.site-nav.is-hidden) .lnav { top: 0; }
    3. CALIBRATE
    ============================================================================================= */
 .home .cal { padding-bottom: clamp(32px, 4vw, 64px); }
-.cal-loop { aspect-ratio: 21 / 9; border-radius: var(--r-tile); }
+.cal-loop { aspect-ratio: 21 / 9; border-radius: var(--r-tile); max-width: 1280px; margin-inline: auto; }
 .cal-loop video { width: 100%; height: 100%; object-fit: cover; object-position: 60% 50%; }
 .cal-loop::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(to top, rgba(4, 12, 10, 0.55), transparent 36%); }
 .cal-loop-cap { position: absolute; left: 22px; bottom: 22px; z-index: 2; font-size: 0.75rem; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(238, 243, 239, 0.78); }
@@ -392,7 +400,7 @@ html:has(.site-nav.is-hidden) .lnav { top: 0; }
 .kpis li::before { content: ""; width: 9px; height: 5px; margin-top: 7px; border-left: 1.6px solid var(--teal); border-bottom: 1.6px solid var(--teal); transform: rotate(-45deg); }
 .out-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding-top: 22px; border-top: 1px solid var(--line); }
 .out-status { font-size: 0.75rem; color: var(--fg-3); }
-.out-status button { font: inherit; color: var(--accent); background: none; border: 0; padding: 0; text-decoration: underline; text-underline-offset: 3px; }
+.out-status button, .home .retry { font: inherit; color: var(--accent); background: none; border: 0; padding: 0; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
 
 @media (max-width: 1023px) {
   .console { grid-template-columns: 1fr; }
@@ -412,10 +420,17 @@ html:has(.site-nav.is-hidden) .lnav { top: 0; }
    4. DOWN TO THE STEP (monolith film, fog)
    ============================================================================================= */
 .mono-film { --film-h: 380vh; }
-.home .mono-frame { inset: 13% 0 3% 31%;
+/* the scene is drawn at no more than ~1.06x its 1276px source: on tall or wide screens the box stops growing and
+   feathers into the fog (the film's studio backdrop is flat, so the join is invisible) */
+.home .mono-frame { inset: 13% 0 3% 31%; max-height: 760px; max-width: 1360px; margin: auto;
   -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 24%), linear-gradient(to bottom, transparent 0, #000 12%, #000 86%, transparent);
   mask-image: linear-gradient(90deg, transparent 0, #000 24%), linear-gradient(to bottom, transparent 0, #000 12%, #000 86%, transparent);
   -webkit-mask-composite: source-in; mask-composite: intersect; }
+@media (min-width: 1600px) {
+  .home .mono-frame {
+    -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 24%, #000 calc(100% - 120px), transparent), linear-gradient(to bottom, transparent 0, #000 120px, #000 calc(100% - 120px), transparent);
+    mask-image: linear-gradient(90deg, transparent 0, #000 24%, #000 calc(100% - 120px), transparent), linear-gradient(to bottom, transparent 0, #000 120px, #000 calc(100% - 120px), transparent); }
+}
 /* a soft fog scrim keeps the copy column clean over any frame */
 .mono-film .film-shade { background:
   linear-gradient(90deg, var(--bg) 0, var(--bg) 26%, color-mix(in srgb, var(--bg) 0%, transparent) 44%),
@@ -499,10 +514,10 @@ html:has(.site-nav.is-hidden) .lnav { top: 0; }
 /* =============================================================================================
    5. THREE ZONES (lanes film, teal) + zone map
    ============================================================================================= */
-.lanes-film { --film-h: 320vh; }
-/* the scene is drawn no larger than ~1.12x its source so it stays crisp; the box feathers into the page */
+.lanes-film { --film-h: 320vh; --lw: min(100%, 1360px); --lh: min(100%, 766px); }
+/* the scene is drawn no larger than ~1.07x its 1276px source so it stays crisp; the box feathers into the page */
 .home .lanes-frame { --ln: clamp(0, calc((var(--p, 0) - 0.62) * 7.2), 1);
-  inset: auto; left: 50%; top: 50%; width: min(100%, 1430px); height: min(100%, 804px);
+  inset: auto; left: 50%; top: 50%; width: var(--lw); height: var(--lh);
   /* once the lanes have formed, the camera pulls back and left so each zone can be named at its lane's end */
   transform: translate(calc(-50% - var(--ln) * 15vw), -50%) scale(calc(1 - var(--ln) * 0.16));
   -webkit-mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent), linear-gradient(to bottom, transparent, #000 9%, #000 91%, transparent);
@@ -518,7 +533,7 @@ html:has(.site-nav.is-hidden) .lnav { top: 0; }
 .lanes-film .fb-title { font-size: clamp(2.25rem, 1.2rem + 3.4vw, 4.75rem); }
 .lanes-film .fb-title-2 { font-size: clamp(1.875rem, 1rem + 2.6vw, 3.5rem); max-width: 16em; }
 /* zone names sit just above the far end of each lane; the box matches the drawn frame (container units) */
-.home .lanes-film .beat.fb-lanes { position: absolute; left: 50%; top: 50%; width: min(100%, 1430px); height: min(100%, 804px); transform: translate(-50%, -50%); padding: 0; container-type: size; }
+.home .lanes-film .beat.fb-lanes { position: absolute; left: 50%; top: 50%; width: var(--lw); height: var(--lh); transform: translate(-50%, -50%); padding: 0; container-type: size; }
 .zlegend { position: absolute; inset: 0; }
 .zlegend li { --f: 0.375; --dh: max(56.43cqw, 100cqh); --dw: max(100cqw, 177.22cqh); position: absolute;
   left: calc(50cqw + 0.45 * var(--dw) * 0.84 - 15vw + 24px); right: var(--gutter); top: calc(50cqh + (var(--f) - 0.5) * var(--dh) * 0.84); transform: translateY(-50%);
@@ -528,6 +543,23 @@ html:has(.site-nav.is-hidden) .lnav { top: 0; }
 .zl-name { display: inline-flex; align-items: center; gap: 10px; font-size: clamp(1.375rem, 1rem + 1vw, 2rem); font-weight: 650; letter-spacing: -0.03em; line-height: 1; }
 .zl-name .dot { width: 10px; height: 10px; box-shadow: 0 0 14px var(--z); }
 .zl-rule { color: var(--fg-2); font-size: 0.875rem; line-height: 1.45; text-shadow: 0 1px 14px var(--bg), 0 0 2px var(--bg); }
+@media (min-width: 1500px) {
+  .home .lanes-frame {
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 120px, #000 calc(100% - 220px), transparent), linear-gradient(to bottom, transparent, #000 14%, #000 86%, transparent);
+    mask-image: linear-gradient(90deg, transparent, #000 120px, #000 calc(100% - 220px), transparent), linear-gradient(to bottom, transparent, #000 14%, #000 86%, transparent); }
+}
+/* 1280 to 1439: a little less room past the lane ends, so the rules set smaller and run to the edge in two lines */
+@media (min-width: 1280px) and (max-width: 1439px) {
+  .zlegend li { right: 20px; }
+  .zl-rule { font-size: 0.8125rem; line-height: 1.4; }
+}
+/* 1024 to 1279: too little room past the lane ends for the rules, so each zone is named in one line
+   (the beat before says what the three checks are) */
+@media (min-width: 1024px) and (max-width: 1279px) {
+  .zl-rule { display: none; }
+  .zl-name { font-size: 1.25rem; white-space: nowrap; }
+  .zl-name .dot { width: 8px; height: 8px; }
+}
 
 .zmap { padding-top: clamp(48px, 7vw, 112px); }
 .home .zmap { padding-bottom: clamp(56px, 7vw, 112px); }
@@ -567,6 +599,9 @@ html:has(.site-nav.is-hidden) .lnav { top: 0; }
 .zbar { display: flex; gap: 3px; height: 40px; }
 .zbar i { flex: var(--n) 1 0; min-width: 34px; border-radius: 10px; background: var(--z); display: flex; align-items: center; padding-inline: 12px; transition: flex-grow 900ms var(--ease-out); }
 .zbar b { font: 600 0.875rem/1 var(--mono); color: var(--accent-fg); }
+.zbar i.is-zero { display: none; }
+.zsort-status { font-size: 0.75rem; color: var(--fg-2); }
+.zsort-status:empty { display: none; }
 .zsort-key { flex-wrap: wrap; gap: 6px 18px; margin-top: -4px; }
 .zsort-total { color: var(--fg-3); }
 .zsort-note { font-size: 0.8125rem; color: var(--fg-2); line-height: 1.5; max-width: 46rem; }
@@ -600,10 +635,11 @@ html:has(.site-nav.is-hidden) .lnav { top: 0; }
 
 .fn-card { width: clamp(280px, 23vw, 312px); height: 460px; display: flex; flex-direction: column; gap: 12px; padding: 26px; border-radius: var(--r-tile); background: var(--surface); color: var(--fg);
   box-shadow: inset 0 0 0 1px var(--line), 0 18px 40px -30px rgba(10, 21, 18, 0.32); transition: transform var(--dur-2) var(--ease-out), box-shadow var(--dur-2) var(--ease-out); }
-.fn-card:hover { transform: translateY(-4px); box-shadow: inset 0 0 0 1px var(--line-2), 0 28px 50px -28px rgba(10, 21, 18, 0.4); }
+.fn-card:hover, .fn-card:focus-visible { transform: translateY(-2px); box-shadow: inset 0 0 0 1px var(--line-2), 0 26px 48px -26px rgba(10, 21, 18, 0.42); }
 .fn-card:focus-visible { outline-offset: 4px; border-radius: var(--r-tile); }
 .fn-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-.fn-ico { width: 40px; height: 40px; background: currentColor; -webkit-mask: var(--ico) center / contain no-repeat; mask: var(--ico) center / contain no-repeat; }
+/* the function's mark, in the accent colour (the icons are alpha masks) */
+.fn-ico { width: 38px; height: 38px; background: var(--accent); -webkit-mask: var(--ico) center / contain no-repeat; mask: var(--ico) center / contain no-repeat; }
 .fn-procs { font-size: 0.75rem; color: var(--fg-3); letter-spacing: 0.02em; }
 .fn-procs b { font-weight: 600; color: var(--fg); font-size: 0.875rem; }
 .fn-name { font-size: 1.375rem; line-height: 1.14; letter-spacing: -0.02em; font-weight: 650; text-wrap: balance; min-height: 2.28em; }
@@ -771,11 +807,13 @@ html:has(.site-nav.is-hidden) .lnav { top: 0; }
   .home .ladder { grid-area: auto; padding-bottom: 0; }
   .home .ladder li { opacity: 1; transform: none; }
   .home .ladder li > span:last-child { -webkit-line-clamp: unset; }
-  .home .lanes-film .beat.fb-lanes { container-type: normal; padding: 0 var(--gutter); position: static; transform: none !important; }
+  .home .lanes-film .beat.fb-lanes { container-type: normal; padding: 0 var(--gutter); position: static; width: auto; height: auto; transform: none !important; }
   .zlegend { position: static; display: grid; gap: 14px; }
   .zlegend li { position: static; width: auto; transform: none; justify-items: start; text-align: left; border-top: 2px solid var(--z); padding-top: 10px; }
   .il-text .w { color: var(--fg); }
   .op-canvas { transition: none; }
+  .op-btn[aria-busy="true"] .op-ico { animation: none; }
+  .home .zl-rule { display: block; }
   .hero-cue i { animation: none; }
 }
 /* stacked beats never overlap the still, so short phones keep all their copy without motion */

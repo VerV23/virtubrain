@@ -3,7 +3,7 @@ import type { ComponentChildren, JSX } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { STILLS, srcset, bestSrc } from "../lib/media";
 import { splitMatches } from "./search";
-import { humanizeTitle, humanizeImpact, wrapperOf, WRAPPER_WHERE, IMPACT_PREFIX, type Severity, type Zone, type PainPoint } from "../lib/data";
+import { humanizeTitle, humanizeImpact, wrapperOf, isTaskItself, WRAPPER_WHERE, IMPACT_PREFIX, type Severity, type Zone, type PainPoint } from "../lib/data";
 import { taxIdx } from "./state";
 
 /* ---- Icons: 16px line glyphs drawn on a 16 grid, stroke = currentColor ---------------------- */
@@ -25,6 +25,7 @@ const P: Record<string, JSX.Element> = {
   flag: <><path d="M4 14V2.6" /><path d="M4 3h7.4l-1.6 2.6L11.4 8H4" /></>,
   mail: <><rect x="2" y="3.5" width="12" height="9" rx="1.6" /><path d="m2.6 4.6 5.4 4 5.4-4" /></>,
   reset: <><path d="M2.8 8a5.2 5.2 0 1 0 1.6-3.8" /><path d="M2.6 2.2v2.6h2.6" /></>,
+  move: <><path d="M5 4.5 2.5 8 5 11.5M11 4.5 13.5 8 11 11.5" /><path d="M2.8 8h10.4" /></>,
   lens: <><circle cx="8" cy="8" r="5.6" /><path d="M8 2.4v2.2M8 11.4v2.2M2.4 8h2.2M11.4 8h2.2" /><circle cx="8" cy="8" r="1.4" /></>,
 };
 export function Icon({ name, class: cls = "" }: { name: keyof typeof P | string; class?: string }) {
@@ -52,10 +53,16 @@ export function painImpact(p: PainPoint) {
   const kpis = taxIdx.value?.resolve(p.processId, p.functionId)?.proc.calibration.kpis || [];
   return humanizeImpact(p.impact, kpis);
 }
-/** Where a point sits: its exact step for core steps, task level for the standard wrapper steps. */
-export function painWhere(p: PainPoint): { wrapper: boolean; text: string } {
+/** Where a point sits: its exact step for core steps, task level for the standard steps. */
+export function painWhere(p: PainPoint): { wrapper: boolean; itself: boolean; text: string } {
   const w = wrapperOf(p.stepText);
-  return w ? { wrapper: true, text: `${WRAPPER_WHERE[w.kind]} (standard step)` } : { wrapper: false, text: `Step ${p.stepIndex + 1}` };
+  if (w) return { wrapper: true, itself: false, text: `${WRAPPER_WHERE[w.kind]} (standard step)` };
+  if (isTaskItself(p.stepText, p.taskName)) {
+    const proc = taxIdx.value?.resolve(p.processId, p.functionId)?.proc;
+    const n = proc?.activities.flatMap((a) => a.tasks).find((t) => t.id === p.taskId)?.steps.length || 5;
+    return { wrapper: false, itself: true, text: `Step ${p.stepIndex + 1} of ${n}: the task itself` };
+  }
+  return { wrapper: false, itself: false, text: `Step ${p.stepIndex + 1}` };
 }
 export const Impact = ({ p, hl = [] }: { p: PainPoint; hl?: string[] }) => (
   <p class="impact"><span class="impact-pre">{IMPACT_PREFIX}</span> <Hl text={painImpact(p)} hl={hl} /></p>

@@ -1,10 +1,11 @@
 /* X-ray: every step of one process sorted into Auto / Assist / Human by zoneOf(), with the reason shown,
-   pain points pinned, and the reader free to move any step. By default it counts core steps (the work
-   each task names); the standard wrapper steps fold into one row per task. Moves live in the URL. */
+   failure points pinned, and the reader free to move any step. By default it counts core steps (the work
+   each task names); the standard steps around them gather in one row at the bottom of each lane.
+   Moves live in the URL. */
 import { signal, computed } from "@preact/signals";
 import { useLayoutEffect, useRef } from "preact/hooks";
 import {
-  ZONES, ZONE_ORDER, zoneOf, gatewayOf, stepKey, wrapperOf, stepLabel, humanizeStep, shares, PAIN_NOTE, WRAPPER_WHERE, SEVERITIES,
+  ZONES, ZONE_ORDER, zoneOf, gatewayOf, stepKey, taskKey, wrapperOf, stepLabel, humanizeStep, isTaskItself, shares, PAIN_NOTE, WRAPPER_WHERE, SEVERITIES, STAGE,
   type Zone, type ZoneCall, type PainPoint, type ProcRef, type WrapperKind,
 } from "../lib/data";
 import { route, go, hrefFor, shareUrl, tax, pain, painIdx, currentProc, taxIdx, zoneBenchmark, loadData, say, announce, stepIdOf, type Basis } from "./state";
@@ -14,22 +15,28 @@ import { Seg } from "./controls";
 
 export interface XStep {
   sid: string; taskId: string; taskName: string; actName: string; text: string; label: string; call: ZoneCall;
-  pins: PainPoint[]; gw: boolean; n: number; std: { kind: WrapperKind; label: string } | null;
+  pins: PainPoint[]; taskPins: PainPoint[]; gw: boolean; n: number; std: { kind: WrapperKind; label: string } | null;
+  itself: boolean; stepNo: number; stepOf: number;
 }
 
 const xsteps = computed<XStep[]>(() => {
   const ref = currentProc.value; if (!ref) return [];
-  const pins = painIdx.value?.idx.byStep; const out: XStep[] = []; let n = 0;
-  for (const a of ref.proc.activities) for (const t of a.tasks) t.steps.forEach((s, i) => {
-    out.push({ sid: stepIdOf(t.id, i), taskId: t.id, taskName: t.name, actName: a.name, text: s, label: stepLabel(s, t.name), call: zoneOf(s, t.name),
-      pins: pins?.get(stepKey(ref.fn.functionId, t.id, i)) || [], gw: !!gatewayOf(s), n: n++, std: wrapperOf(s) });
-  });
+  const pidx = painIdx.value?.idx; const out: XStep[] = []; let n = 0;
+  for (const a of ref.proc.activities) for (const t of a.tasks) {
+    const taskPins = pidx?.byTask.get(taskKey(ref.fn.functionId, t.id)) || [];
+    t.steps.forEach((s, i) => {
+      out.push({ sid: stepIdOf(t.id, i), taskId: t.id, taskName: t.name, actName: a.name, text: s, label: stepLabel(s, t.name), call: zoneOf(s, t.name),
+        pins: pidx?.byStep.get(stepKey(ref.fn.functionId, t.id, i)) || [], taskPins, gw: !!gatewayOf(s), n: n++, std: wrapperOf(s),
+        itself: isTaskItself(s, t.name), stepNo: i + 1, stepOf: t.steps.length });
+    });
+  }
   return out;
 });
 const zoneFor = (s: XStep) => route.value.z[s.sid] || s.call.zone;
 const inBasis = (s: XStep, b: Basis) => b === "all" || !s.std;
 const painFailed = () => pain.value.state === "error";
 const sevRank = (p: PainPoint[]) => (p.length ? SEVERITIES.indexOf(p[0].severity) : 9);
+const itselfLabel = (s: XStep) => `Step ${s.stepNo} of ${s.stepOf}: the task itself`;
 
 /* ---- process picker (driven by the toolbar search while in X-ray) -------------------------------- */
 export const pickOpen = signal(false);
@@ -104,13 +111,13 @@ const resetAll = () => { captureRects(); go({ z: {} }, { replace: true }); annou
 
 /* ---- view ------------------------------------------------------------------------------------- */
 const mLane = signal<Zone>("auto");
-/** Task fold rows the reader opened, keyed "<zone>|<taskId>". */
+/** Standard-step rows the reader opened, keyed by zone. */
 const openFold = signal<Set<string>>(new Set());
 
 /** After jumping in from Explore, bring the chosen step forward (switching the phone lane if needed) and focus it. */
 export function focusXrayStep(sid: string, tries = 20) {
   const step = xsteps.value.find((s) => s.sid === sid);
-  if (step?.std && route.value.basis === "core") { const k = `${zoneFor(step)}|${step.taskId}`; if (!openFold.value.has(k)) openFold.value = new Set([...openFold.value, k]); }
+  if (step?.std && route.value.basis === "core") { const k = zoneFor(step); if (!openFold.value.has(k)) openFold.value = new Set([...openFold.value, k]); }
   const el = document.querySelector<HTMLElement>(`.lanes [data-step="${CSS.escape(sid)}"]`);
   if (!el) { if (tries > 0) setTimeout(() => focusXrayStep(sid, tries - 1), 60); return; }
   const lane = el.closest<HTMLElement>("[data-zone]")?.dataset.zone as Zone | undefined;
@@ -148,7 +155,7 @@ function XHead({ pr }: { pr: ProcRef }) {
         <div class="xr-links">
           <button type="button" class="b b-ghost b-sm" onClick={openPicker}><Icon name="search" />Choose another process</button>
           <a class="b b-quiet b-sm" href={hrefFor({ view: "explore", fn: fn.functionId, p: proc.id, s: undefined })}
-            onClick={(e) => { e.preventDefault(); go({ view: "explore", fn: fn.functionId, p: proc.id }); }}>Open in Explore</a>
+            onClick={(e) => { e.preventDefault(); go({ view: "explore", fn: fn.functionId, p: proc.id }, { focus: true }); }}>Open in Explore</a>
           <button type="button" class="b b-quiet b-sm" onClick={async () => {
             const ok = await copyText(shareUrl()); say(ok ? "Link copied" : "Couldn't copy. The link is in the address bar.", { tone: ok ? "ok" : "warn" });
           }}><Icon name="link" />Copy link</button>
@@ -160,7 +167,7 @@ function XHead({ pr }: { pr: ProcRef }) {
 }
 
 function PainRetry({ short = false }: { short?: boolean }) {
-  return <span class="pain-fail">{short ? "Pain points didn't load" : "Pain points didn't load."} <button type="button" class="linkish" onClick={() => loadData()}>Try again</button></span>;
+  return <span class="pain-fail">{short ? "Failure points didn't load" : "Failure points didn't load."} <button type="button" class="linkish" onClick={() => loadData()}>Try again</button></span>;
 }
 
 function Summary({ pr }: { pr: ProcRef }) {
@@ -189,8 +196,8 @@ function Summary({ pr }: { pr: ProcRef }) {
         <Seg label="Count" size="sm" value={r.basis} onChange={(basis) => go({ basis }, { replace: true })}
           options={[{ id: "core", label: <>Core steps <span class="num">{nCore}</span></> }, { id: "all", label: <>All steps <span class="num">{steps.length}</span></> }]} />
         <p class="basis-help">{r.basis === "core"
-          ? `Core steps are the work each task names. The other ${steps.length - nCore} follow the standard receive, check, decide and hand-off pattern and are folded into their task.`
-          : `All ${steps.length} steps, including the standard receive, check, decide and hand-off pattern around each task.`}</p>
+          ? `Core steps are the work each task names. The other ${steps.length - nCore} are the standard steps around them (confirm the inputs, check the output, decide whether it is complete, log and hand off), gathered at the bottom of each lane.`
+          : `All ${steps.length} steps, including the standard five-step pattern around each task.`}</p>
       </div>
       <div class="zbar" role="img" aria-label={ZONE_ORDER.map((z, i) => `${ZONES[z].label} ${pct[i]}%`).join(", ")}>
         {ZONE_ORDER.map((z) => <span key={z} class={`zbar-seg z-${z}`} style={{ flexGrow: String(c[z]), flexBasis: c[z] ? "3px" : "0px" }} />)}
@@ -207,9 +214,10 @@ function Summary({ pr }: { pr: ProcRef }) {
       <dl class="zstats">
         {ZONE_ORDER.map((z, i) => <ZStat key={z} z={z} n={c[z]} share={pct[i]} pains={p[z]} />)}
       </dl>
-      {r.basis === "core" && stdPins > 0 && !painFailed() && (
-        <p class="std-pins">{plural(stdPins, "more illustrative pain point")} {stdPins === 1 ? "sits" : "sit"} on standard steps and {stdPins === 1 ? "is" : "are"} shown on their task's folded row. <Ill /></p>
-      )}
+      {!painFailed() && <p class="std-pins">
+        <Ill />
+        <span>Failure points are illustrative{r.basis === "core" && stdPins > 0 && !painFailed() ? `. ${plural(stdPins, "more sits", "more sit")} on standard steps and ${stdPins === 1 ? "is" : "are"} listed at the bottom of each lane.` : "."}</span>
+      </p>}
     </section>
   );
 }
@@ -221,53 +229,72 @@ function ZStat({ z, n, share, pains }: { z: Zone; n: number; share: number; pain
       <dt><i aria-hidden="true" />{ZONES[z].label}</dt>
       <dd class="zs-fig"><span class="zs-n num">{Math.round(tn)}</span><span class="zs-pct num">{Math.round(tp)}%</span></dd>
       <dd class="zs-pain">
-        {pd === "error" ? <PainRetry short /> : pd === "loading" ? "Loading pain points" :
-          pains ? <><span class="tick" aria-hidden="true" />{plural(pains, "pain point")} <Ill /></> : "No pain points in this zone"}
+        {pd === "error" ? <PainRetry short /> : pd === "loading" ? "Loading failure points" :
+          pains ? <><span class="tick" aria-hidden="true" />{plural(pains, "failure point")}</> : "No failure points in this zone"}
       </dd>
     </div>
   );
 }
 
+/** Start here: core Auto steps an AI agent could take on, the ones with failure points first. Steps whose
+    wording says a system already runs them are not recommended; they are named in a note instead. */
 function StartHere() {
-  const steps = xsteps.value;
+  const steps = xsteps.value; const failed = painFailed();
   const autos = steps.filter((s) => !s.std && zoneFor(s) === "auto");
-  const list = [...autos.filter((s) => s.pins.length).sort((a, b) => sevRank(a.pins) - sevRank(b.pins) || a.n - b.n), ...autos.filter((s) => !s.pins.length)].slice(0, 5);
+  const systemRun = autos.filter((s) => s.call.rule === "system-run" && !route.value.z[s.sid]);
+  const picks = autos.filter((s) => !systemRun.includes(s))
+    .sort((a, b) => sevRank(a.pins) - sevRank(b.pins) || sevRank(a.taskPins) - sevRank(b.taskPins) || a.n - b.n).slice(0, 5);
+  const bare = picks.filter((s) => !s.pins.length && !s.taskPins.length).length;
+  const reason = (s: XStep) => {
+    if (s.pins[0]) return { sev: s.pins[0].severity, text: `${s.pins[0].severity} failure point at this step` };
+    if (s.taskPins[0]) { const w = wrapperOf(s.taskPins[0].stepText); return { sev: s.taskPins[0].severity, text: `${s.taskPins[0].severity} failure point ${(w ? WRAPPER_WHERE[w.kind] : "in this task").replace(/^\w/, (c) => c.toLowerCase())}` }; }
+    return null;
+  };
   return (
     <section class="xr-start" aria-labelledby="start-h">
       <div class="start-head">
         <h3 id="start-h" class="h-md">Start here</h3>
-        <p class="d-sec-sub">Core steps an AI agent could run and check, the ones with illustrative pain points first.</p>
+        <p class="d-sec-sub">Core steps whose output can be checked against a record, the ones with failure points first.</p>
+        <Ill />
       </div>
-      {list.length ? (
+      {picks.length ? (
         <ol class="start-list">
-          {list.map((s) => (
-            <li key={s.sid}>
-              <button type="button" class="start-item" onClick={() => { if (route.value.only && !s.pins.length) go({ only: false }, { replace: true }); mLane.value = "auto"; focusXrayStep(s.sid); }}>
-                <span class="start-top"><span class="code">{s.sid}</span><span class="start-task">{s.taskName}</span></span>
-                <span class="start-text">{s.label}</span>
-                {s.pins[0] ? <span class="start-pin"><SevMark sev={s.pins[0].severity} />{painTitle(s.pins[0])}<Ill /></span>
-                  : <span class="start-pin muted">{painFailed() ? "Pain points didn't load" : "No pain point recorded"}</span>}
-              </button>
-            </li>
-          ))}
+          {picks.map((s) => {
+            const why = failed ? null : reason(s);
+            return (
+              <li key={s.sid}>
+                <button type="button" class="start-item" onClick={() => { if (route.value.only && !s.pins.length) go({ only: false }, { replace: true }); mLane.value = "auto"; focusXrayStep(s.sid); }}>
+                  <span class="start-top"><span class="code">{s.sid}</span><span class="start-task">{s.itself ? itselfLabel(s) : s.taskName}</span></span>
+                  <span class="start-text">{s.itself ? s.taskName : s.label}</span>
+                  {why ? <span class="start-why"><SevMark sev={why.sev} label={false} />{why.text}</span>
+                    : <span class="start-why muted">{failed ? "Failure points didn't load" : s.call.why}</span>}
+                </button>
+              </li>
+            );
+          })}
         </ol>
-      ) : <p class="start-none">No core step in this process sorts to Auto on its wording. Look at the Assist lane, where an AI agent drafts and a person approves.</p>}
+      ) : <p class="start-none">No core step in this process sorts to Auto on its wording, apart from steps a system already runs. Look at the Assist lane, where an AI agent drafts and a person approves.</p>}
+      {(bare > 0 || systemRun.length > 0) && (
+        <p class="start-note">
+          {bare > 0 && !failed && <>{bare === picks.length ? "None of these has" : `${bare} of these ${bare === 1 ? "has" : "have"}`} a failure point recorded; {bare === 1 && bare !== picks.length ? "it is" : "they are"} listed because the output can be checked against a record. </>}
+          {systemRun.length > 0 && <>Not listed because the wording says a system already runs {systemRun.length === 1 ? "it" : "them"}: {systemRun.map((s, i) => <span key={s.sid}>{i ? ", " : ""}<span class="code">{s.sid}</span></span>)}.</>}
+        </p>
+      )}
     </section>
   );
 }
 
 interface LaneItem { kind: "card"; s: XStep }
-interface FoldItem { kind: "fold"; taskId: string; taskName: string; steps: XStep[] }
+interface FoldItem { kind: "fold"; steps: XStep[] }
 function laneItems(steps: XStep[], z: Zone, basis: Basis, only: boolean): (LaneItem | FoldItem)[] {
-  const out: (LaneItem | FoldItem)[] = []; let fold: FoldItem | null = null;
+  const cards: LaneItem[] = []; const std: XStep[] = [];
   for (const s of steps) {
     if (zoneFor(s) !== z) continue;
-    if (basis === "core" && s.std) {
-      if (!fold || fold.taskId !== s.taskId) { fold = { kind: "fold", taskId: s.taskId, taskName: s.taskName, steps: [] }; out.push(fold); }
-      fold.steps.push(s);
-    } else { out.push({ kind: "card", s }); fold = null; }
+    if (basis === "core" && s.std) std.push(s); else cards.push({ kind: "card", s });
   }
-  return only ? out.filter((x) => (x.kind === "card" ? x.s.pins.length > 0 : x.steps.some((s) => s.pins.length))) : out;
+  const shownCards = only ? cards.filter((c) => c.s.pins.length > 0) : cards;
+  const shownStd = only ? std.filter((s) => s.pins.length > 0) : std;
+  return shownStd.length ? [...shownCards, { kind: "fold", steps: shownStd }] : shownCards;
 }
 
 function Lanes() {
@@ -296,11 +323,14 @@ function Lanes() {
   return (
     <div class="lanes-wrap">
       <div class="lanes-tools">
-        <label class="switch">
-          <input type="checkbox" checked={r.only} onChange={(e) => go({ only: (e.currentTarget as HTMLInputElement).checked }, { replace: true })} disabled={painFailed()} />
-          <span class="switch-ui" aria-hidden="true" /><span>Only steps with pain points</span>
-        </label>
-        <p class="kbd-hint" id="xr-kbd">Select a step, then press <kbd>←</kbd> <kbd>→</kbd> to move it, or <kbd>A</kbd> <kbd>S</kbd> <kbd>H</kbd> for Auto, Assist, Human.</p>
+        <div class="lt-left">
+          <label class="switch">
+            <input type="checkbox" checked={r.only} onChange={(e) => go({ only: (e.currentTarget as HTMLInputElement).checked }, { replace: true })} disabled={painFailed()} />
+            <span class="switch-ui" aria-hidden="true" /><span>Only steps with failure points</span>
+          </label>
+          <Ill />
+        </div>
+        <p class="kbd-hint" id="xr-kbd">Select a step, then press <kbd>←</kbd> <kbd>→</kbd> to move it, or <kbd>A</kbd> <kbd>S</kbd> <kbd>H</kbd> for Auto, Assist, Human. Or hover a step and choose a zone.</p>
       </div>
       {painFailed() && <p class="pain-banner"><PainRetry /></p>}
       <div class="lane-switch" role="radiogroup" aria-label="Show lane"
@@ -323,36 +353,39 @@ function Lanes() {
             </header>
             {items[z].length ? (
               <ol class="lane-list">
-                {items[z].map((it) => it.kind === "card" ? <Card key={it.s.sid} s={it.s} zone={z} /> : <Fold key={`f-${it.taskId}`} f={it} zone={z} />)}
+                {items[z].map((it) => it.kind === "card" ? <Card key={it.s.sid} s={it.s} zone={z} /> : <Fold key="std" f={it} zone={z} />)}
               </ol>
             ) : (
-              <div class="lane-empty"><p>{r.only ? "No steps with pain points here." : "No steps here."}</p><p>{r.only ? "Turn off the filter to see every step." : "Move one in with the zone control on any step."}</p></div>
+              <div class="lane-empty"><p>{r.only ? "No steps with failure points here." : "No steps here."}</p><p>{r.only ? "Turn off the filter to see every step." : "Move one in with the zone control on any step."}</p></div>
             )}
           </section>
         ))}
       </div>
-      <p class="note xr-note">Pain points on steps come from the illustrative library. {PAIN_NOTE.replace(/^Illustrative library, /, "It is ")}</p>
+      <p class="note xr-note">Failure points on steps come from the illustrative library. {PAIN_NOTE.replace(/^Illustrative library, /, "It is ")}</p>
     </div>
   );
 }
 
+/** All of a lane's standard steps in one row at the bottom, with any failure points on them lifted into it. */
 function Fold({ f, zone }: { f: FoldItem; zone: Zone }) {
-  const k = `${zone}|${f.taskId}`; const open = openFold.value.has(k);
-  const pins = f.steps.flatMap((s) => s.pins);
-  const toggle = () => { const n = new Set(openFold.value); if (open) n.delete(k); else n.add(k); openFold.value = n; };
+  const open = openFold.value.has(zone);
+  const tasks = new Set(f.steps.map((s) => s.taskId)).size;
+  const stages = [...new Set(f.steps.map((s) => s.std!.kind))].sort((a, b) => ["start", "check", "gate", "handoff"].indexOf(a) - ["start", "check", "gate", "handoff"].indexOf(b));
+  const withPins = f.steps.filter((s) => s.pins.length);
+  const toggle = () => { const n = new Set(openFold.value); if (open) n.delete(zone); else n.add(zone); openFold.value = n; };
   return (
     <li class={`fold${open ? " is-open" : ""}`}>
       <button type="button" class="fold-btn" aria-expanded={open} onClick={toggle}>
         <Icon name="chevron" class="chev" />
         <span class="fold-main">
-          <span class="fold-top"><span class="code">{f.taskId}</span><span class="fold-task">{f.taskName}</span></span>
-          <span class="fold-text"><span class="num">{f.steps.length}</span> standard {f.steps.length === 1 ? "step" : "steps"}: {f.steps.map((s) => s.std!.label.toLowerCase()).join(", ")}</span>
+          <span class="fold-text"><span class="num">{f.steps.length}</span> standard {f.steps.length === 1 ? "step" : "steps"} across <span class="num">{tasks}</span> {tasks === 1 ? "task" : "tasks"}</span>
+          <span class="fold-sub">{stages.map((k) => STAGE[k]).join(", ")}</span>
         </span>
       </button>
-      {pins.length > 0 && (
+      {withPins.length > 0 && (
         <div class="fold-pins">
-          {f.steps.filter((s) => s.pins.length).map((s) => s.pins.map((p) => (
-            <p key={p.id} class={`card-pin sev-${p.severity}`}><SevMark sev={p.severity} /><span>{painTitle(p)} <span class="pin-where">{WRAPPER_WHERE[s.std!.kind]}</span></span><Ill /></p>
+          {withPins.map((s) => s.pins.map((p) => (
+            <p key={p.id} class={`card-pin sev-${p.severity}`}><SevMark sev={p.severity} /><span>{painTitle(p)} <span class="pin-where"><span class="code">{s.taskId}</span> {WRAPPER_WHERE[s.std!.kind].replace(/^\w/, (c) => c.toLowerCase())}</span></span></p>
           )))}
         </div>
       )}
@@ -377,22 +410,24 @@ function Card({ s, zone, compact = false }: { s: XStep; zone: Zone; compact?: bo
     }
     if (to && !e.metaKey && !e.ctrlKey && !e.altKey) { e.preventDefault(); e.stopPropagation(); moveStep(s, to); }
   };
+  const top = s.std ? <span class="card-task">{s.taskId} {s.taskName}</span> : <span class="card-task">{s.itself ? itselfLabel(s) : s.taskName}</span>;
   return (
     <li class="card-li"><div class={`card z-${zone}${moved ? " is-moved" : ""}${s.gw ? " is-gw" : ""}${s.std ? " is-std" : ""}${compact ? " is-compact" : ""}`} data-step={s.sid} tabIndex={0}
-      role="group" aria-label={`${ZONES[zone].label}. Step ${s.sid}${s.std ? ", standard step" : ""}: ${s.label}`} aria-describedby="xr-kbd" onKeyDown={onKey}>
-      <p class="card-top"><span class="code">{s.sid}</span>{s.std ? <span class="std-tag">Standard step</span> : <span class="card-task">{s.taskName}</span>}</p>
-      <p class="card-text">{s.gw && <span class="sr-only">Decision point: </span>}{s.label}</p>
+      role="group" aria-label={`${ZONES[zone].label}. Step ${s.sid}${s.std ? ", standard step" : ""}: ${s.itself ? s.taskName : s.label}`} aria-describedby="xr-kbd" onKeyDown={onKey}>
+      <p class="card-top"><span class="code">{s.sid}</span>{top}</p>
+      <span class="mv-hint" aria-hidden="true" onClick={(e) => (e.currentTarget.parentElement as HTMLElement).focus()}><Icon name="move" />Move</span>
+      <p class="card-text">{s.gw && <span class="sr-only">Decision point: </span>}{s.itself ? s.taskName : s.label}</p>
       <p class="card-why">
         {moved ? <><span class="why-l">Moved by you.</span> First pass: {ZONES[s.call.zone].label}. {s.call.why}</> : <><span class="why-l">Why</span>{s.call.why}</>}
       </p>
       {s.pins.map((p) => (
-        <p key={p.id} class={`card-pin sev-${p.severity}`}><SevMark sev={p.severity} /><span>{painTitle(p)}{s.std && <span class="pin-where"> {WRAPPER_WHERE[s.std.kind]}</span>}</span><Ill /></p>
+        <p key={p.id} class={`card-pin sev-${p.severity}`}><SevMark sev={p.severity} /><span>{painTitle(p)}{s.std && <span class="pin-where"> {WRAPPER_WHERE[s.std.kind].replace(/^\w/, (c) => c.toLowerCase())}</span>}</span></p>
       ))}
-      {failed && <p class="card-fail">Pain points didn't load</p>}
+      {failed && <p class="card-fail">Failure points didn't load</p>}
       <div class="zseg" role="group" aria-label={`Move step ${s.sid}`}>
         {ZONE_ORDER.map((z) => (
-          <button key={z} type="button" tabIndex={-1} class={`mv z-${z}`} aria-pressed={z === zone} onClick={() => moveStep(s, z)}>
-            <i aria-hidden="true" />{ZONES[z].label}
+          <button key={z} type="button" tabIndex={-1} class={`mv z-${z}`} aria-pressed={z === zone} aria-label={ZONES[z].label} title={ZONES[z].label} onClick={() => moveStep(s, z)}>
+            <i aria-hidden="true" /><span class="mv-l" aria-hidden="true">{ZONES[z].label}</span><span class="mv-k" aria-hidden="true">{({ auto: "A", assist: "S", human: "H" } as const)[z]}</span>
           </button>
         ))}
         {moved && <button type="button" tabIndex={-1} class="mv mv-undo" onClick={() => moveStep(s, s.call.zone)} title="Put back where the first pass sorted it"><Icon name="undo" /><span class="sr-only">Put back to {ZONES[s.call.zone].label}</span></button>}
@@ -404,24 +439,25 @@ function Card({ s, zone, compact = false }: { s: XStep; zone: Zone; compact?: bo
 function summaryText(ref: ProcRef, steps: XStep[]) {
   const r = route.value; const { c, p, total, pct, stdPins } = counts(steps, r.basis);
   const failed = painFailed(); const moved = steps.filter((s) => r.z[s.sid]);
+  const text = (s: XStep) => (s.itself ? `${s.taskName} (${itselfLabel(s).toLowerCase()})` : humanizeStep(s.text, s.taskName));
   const L: string[] = [];
   L.push(`VirtuBrain process X-ray: ${ref.proc.id} ${ref.proc.name}`);
   L.push(`${ref.fn.functionName} / ${ref.group.groupId} ${ref.group.groupName}`);
   L.push("");
   L.push(`${total} ${r.basis === "core" ? "core steps" : "steps"} sorted by who should run them${r.basis === "core" ? ` (${steps.length - total} standard steps not counted)` : ""}:`);
-  ZONE_ORDER.forEach((z, i) => L.push(`  ${ZONES[z].label.padEnd(7)}${String(c[z]).padStart(3)} steps  ${String(pct[i]).padStart(3)}%   ${failed ? "pain points didn't load" : `${plural(p[z], "illustrative pain point")}`}`));
-  if (r.basis === "core" && stdPins && !failed) L.push(`  ${plural(stdPins, "more illustrative pain point")} on standard steps, listed with their task.`);
+  ZONE_ORDER.forEach((z, i) => L.push(`  ${ZONES[z].label.padEnd(7)}${String(c[z]).padStart(3)} steps  ${String(pct[i]).padStart(3)}%   ${failed ? "failure points didn't load" : `${plural(p[z], "illustrative failure point")}`}`));
+  if (r.basis === "core" && stdPins && !failed) L.push(`  ${plural(stdPins, "more illustrative failure point")} on standard steps, listed with their task.`);
   if (moved.length) L.push(`${plural(moved.length, "step")} moved by hand from the first-pass sort.`);
   for (const z of ZONE_ORDER) {
     const list = steps.filter((s) => zoneFor(s) === z && inBasis(s, r.basis)); if (!list.length) continue;
     L.push(""); L.push(`${ZONES[z].label}: ${ZONES[z].rule}`);
-    for (const s of list) L.push(`  ${s.sid}  ${humanizeStep(s.text, s.taskName)}${r.z[s.sid] ? `  [moved from ${ZONES[s.call.zone].label}]` : ""}${s.pins.length ? `  [${s.pins.map((x) => `illustrative ${x.severity.toLowerCase()} pain point: ${painTitle(x)}`).join("; ")}]` : ""}`);
+    for (const s of list) L.push(`  ${s.sid}  ${text(s)}${r.z[s.sid] ? `  [moved from ${ZONES[s.call.zone].label}]` : ""}${s.pins.length ? `  [${s.pins.map((x) => `illustrative ${x.severity.toLowerCase()} failure point: ${painTitle(x)}`).join("; ")}]` : ""}`);
   }
   if (r.basis === "core" && !failed) {
     const sp = steps.filter((s) => s.std && s.pins.length);
-    if (sp.length) { L.push(""); L.push("Pain points on standard steps (shown at task level):"); for (const s of sp) for (const x of s.pins) L.push(`  ${s.taskId}  ${WRAPPER_WHERE[s.std!.kind]}: illustrative ${x.severity.toLowerCase()} pain point, ${painTitle(x)}`); }
+    if (sp.length) { L.push(""); L.push("Failure points on standard steps (shown at task level):"); for (const s of sp) for (const x of s.pins) L.push(`  ${s.taskId}  ${WRAPPER_WHERE[s.std!.kind]}: illustrative ${x.severity.toLowerCase()} failure point, ${painTitle(x)}`); }
   }
-  if (failed) { L.push(""); L.push("Pain points didn't load, so none are listed."); }
+  if (failed) { L.push(""); L.push("Failure points didn't load, so none are listed."); }
   L.push("");
   L.push("A first-pass sort on the wording of each step. Use it to start the conversation, not to decide.");
   L.push(PAIN_NOTE);

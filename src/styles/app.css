@@ -214,7 +214,7 @@ kbd { display: inline-grid; place-items: center; min-width: 20px; height: 20px; 
 .opt:hover { background: rgba(232, 240, 235, 0.035); }
 .opt[aria-selected="true"] { background: var(--hl); color: var(--fg); }
 .opt[aria-selected="true"] .code { color: var(--teal); }
-.listbox:focus-visible .opt.is-active, .vb:has(#vb-search:focus) .opt.is-active { box-shadow: inset 0 0 0 1.5px rgba(94, 196, 176, 0.7); }
+.listbox:focus-visible .opt.is-active, .vb[data-search-focus] .opt.is-active { box-shadow: inset 0 0 0 1.5px rgba(94, 196, 176, 0.7); }
 .opt-main { display: grid; gap: 3px; min-width: 0; }
 .opt-name { font-size: 0.875rem; line-height: 1.35; font-weight: 500; }
 .opt-ctx { font-size: 0.75rem; line-height: 1.4; color: var(--fg-3); }
@@ -365,6 +365,7 @@ kbd { display: inline-grid; place-items: center; min-width: 20px; height: 20px; 
 .pin-acts a { color: var(--teal); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: rgba(94, 196, 176, 0.45); }
 .st-std .node { border-style: dashed; border-color: var(--line-3); }
 .st-std .st-text { font-size: 0.875rem; color: var(--fg-2); }
+.st-text.is-itself { color: var(--fg-2); font-size: 0.875rem; }
 .st-fold { margin: 2px 0 4px 48px; }
 .st-fold button { display: inline-flex; align-items: center; gap: 9px; max-width: 100%; padding: 6px 12px 6px 6px; border-radius: 9px; border: 1px dashed var(--line-2); background: none; font-size: 0.8125rem; color: var(--fg-3); text-align: left; }
 .st-fold button:hover { color: var(--fg); border-color: var(--line-3); }
@@ -470,7 +471,7 @@ kbd { display: inline-grid; place-items: center; min-width: 20px; height: 20px; 
 .rp-step .code { color: var(--fg-3); }
 .rp-st { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .rec-acts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; margin-top: 12px; }
-.rec-talk { position: relative; z-index: 1; display: inline-flex; align-items: center; gap: 6px; font-size: 0.75rem; font-weight: 600; color: var(--fg-2); }
+.rec-talk { position: relative; z-index: 1; display: inline-flex; align-items: center; gap: 6px; min-height: 24px; font-size: 0.75rem; font-weight: 600; color: var(--fg-2); }
 .rec-talk:hover { color: var(--teal); }
 .rec-talk .ico { width: 13px; height: 13px; }
 .rec-more { padding: 0 12px; border-top: 1px solid var(--line); }
@@ -568,9 +569,13 @@ kbd { display: inline-grid; place-items: center; min-width: 20px; height: 20px; 
 .start-top { display: flex; gap: 8px; align-items: baseline; min-width: 0; font-size: 0.75rem; color: var(--fg-3); }
 .start-task { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .start-text { font-size: 0.875rem; line-height: 1.4; font-weight: 550; color: var(--fg); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden; }
-.start-pin { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; font-size: 0.75rem; line-height: 1.4; color: var(--fg-2); }
+.start-why { display: flex; align-items: baseline; gap: 8px; font-size: 0.75rem; line-height: 1.4; color: var(--fg-2); }
+.start-why .sev { flex: none; }
+.start-note { margin-top: 12px; font-size: 0.8125rem; line-height: 1.5; color: var(--fg-3); max-width: 90ch; }
+.start-head .ill { align-self: center; }
 .start-none { margin-top: 10px; font-size: 0.875rem; color: var(--fg-2); max-width: 70ch; }
 
+.lt-left { display: flex; align-items: center; gap: 10px; }
 .lanes-tools { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 24px; margin-top: 26px; }
 .kbd-hint { font-size: 0.8125rem; color: var(--fg-3); }
 .pain-banner { margin-top: 12px; padding: 10px 14px; border-radius: 10px; border: 1px solid color-mix(in srgb, var(--amber) 40%, transparent); font-size: 0.8125rem; }
@@ -586,7 +591,8 @@ kbd { display: inline-grid; place-items: center; min-width: 20px; height: 20px; 
 .lane-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
 .lane-empty { padding: 22px 16px; border-radius: 12px; border: 1px dashed var(--line-2); font-size: 0.8125rem; color: var(--fg-3); }
 .lane-empty p:first-child { color: var(--fg-2); font-weight: 600; }
-.card-li { min-width: 0; }
+/* cards below the fold skip layout and paint until they come near the viewport */
+.card-li { min-width: 0; content-visibility: auto; contain-intrinsic-size: auto 150px; }
 .card { position: relative; min-width: 0; scroll-margin: 120px 0 24px; padding: 12px 14px 12px; border-radius: 13px; background: var(--surface); border: 1px solid var(--line); outline: none;
   box-shadow: 0 1px 0 rgba(232, 240, 235, 0.03) inset; transition: border-color var(--dur-1), background-color var(--dur-1); }
 .card:hover { border-color: var(--line-2); }
@@ -607,20 +613,38 @@ kbd { display: inline-grid; place-items: center; min-width: 20px; height: 20px; 
 .card.is-std .card-text { color: var(--fg-2); }
 .card.is-compact { padding: 10px 12px; }
 .card.is-compact .card-why { display: none; }
-/* the zone control: one quiet segmented pill, revealed on hover or focus; keyboard users move steps with the arrow keys */
-.zseg { display: inline-flex; gap: 1px; margin-top: 10px; padding: 2px; border-radius: 9px; background: rgba(232, 240, 235, 0.04); box-shadow: inset 0 0 0 1px var(--line);
-  opacity: 0; transition: opacity var(--dur-1); }
-.card:hover .zseg, .card:focus-within .zseg, .card.is-moved .zseg { opacity: 1; }
+/* the zone control: one segmented pill. On touch screens it sits under every card. With a mouse, a quiet
+   "Move" mark stays in each card's top-right corner and the pill takes its place on hover or focus;
+   keyboard users move steps with the arrow keys or A, S, H. */
+.zseg { display: inline-flex; gap: 1px; margin-top: 10px; padding: 2px; border-radius: 9px; background: rgba(232, 240, 235, 0.04); box-shadow: inset 0 0 0 1px var(--line); }
+.mv-hint { display: none; }
 @media (hover: hover) and (min-width: 900px) {
-  /* on desktop the pill floats over the card's top line instead of reserving space under every card */
-  .zseg { position: absolute; top: 7px; right: 8px; margin: 0; background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--line-2), 0 6px 18px rgba(0, 0, 0, 0.35); }
-  .card.is-moved .zseg { position: static; margin-top: 10px; box-shadow: inset 0 0 0 1px var(--line); background: rgba(232, 240, 235, 0.04); }
+  .card-top { padding-right: 60px; }
+  .mv-hint { position: absolute; top: 10px; right: 10px; display: inline-flex; align-items: center; gap: 4px; height: 20px; padding: 0 6px; border-radius: 6px;
+    font-size: 0.6875rem; font-weight: 600; color: var(--fg-2); opacity: 0.55; cursor: pointer; transition: opacity var(--dur-1); }
+  .mv-hint .ico { width: 12px; height: 12px; }
+  .zseg { position: absolute; top: 7px; right: 7px; margin: 0; background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--line-2), 0 6px 18px rgba(0, 0, 0, 0.35);
+    opacity: 0; pointer-events: none; transition: opacity var(--dur-1); }
+  .zseg .mv { height: 22px; padding: 0 7px; font-size: 0.6875rem; }
+  .card:hover .zseg, .card:focus-within .zseg { opacity: 1; pointer-events: auto; }
+  .card:hover .mv-hint, .card:focus-within .mv-hint { opacity: 0; }
+  .card.is-moved .card-top { padding-right: 0; }
+  .card.is-moved .mv-hint { display: none; }
+  .card.is-moved .zseg { position: static; margin-top: 10px; box-shadow: inset 0 0 0 1px var(--line); background: rgba(232, 240, 235, 0.04); opacity: 1; pointer-events: auto; }
 }
 .mv { display: inline-flex; align-items: center; gap: 5px; height: 24px; padding: 0 9px; border-radius: 7px; border: 0; background: none; font-size: 0.75rem; font-weight: 600; color: var(--fg-3);
   transition: background-color var(--dur-1), color var(--dur-1); }
 .mv i { width: 6px; height: 6px; border-radius: 2px; background: var(--z); }
 .mv:hover { color: var(--fg); }
 .mv[aria-pressed="true"] { background: color-mix(in srgb, var(--z) 18%, var(--surface-2)); color: var(--fg); }
+.mv-k { display: none; }
+@media (hover: hover) and (min-width: 900px) and (max-width: 1279px) {
+  /* narrower lanes: the floating pill uses initials so it never covers the step id */
+  .zseg .mv-l { display: none; }
+  .zseg .mv-k { display: inline; }
+  .card.is-moved .zseg .mv-l { display: inline; }
+  .card.is-moved .zseg .mv-k { display: none; }
+}
 .mv-undo { padding: 0 7px; }
 .mv-undo .ico { width: 12px; height: 12px; }
 .fold { border-radius: 12px; border: 1px dashed var(--line-2); }
@@ -632,6 +656,8 @@ kbd { display: inline-grid; place-items: center; min-width: 20px; height: 20px; 
 .fold-task { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .fold-text { font-size: 0.8125rem; line-height: 1.4; color: var(--fg-2); }
 .fold-text .num { color: var(--fg); }
+.fold-sub { font-size: 0.75rem; line-height: 1.4; color: var(--fg-3); }
+.fold-pins .pin-where .code { margin-right: 4px; }
 .fold-pins { padding: 0 12px 10px; }
 .fold-pins .card-pin { margin-top: 0; }
 .fold-pins .card-pin + .card-pin { margin-top: 6px; }
@@ -759,7 +785,7 @@ kbd { display: inline-grid; place-items: center; min-width: 20px; height: 20px; 
   .mv { height: 30px; padding: 0 11px; }
 }
 @media (hover: none) {
-  .st-x, .zseg { opacity: 1; }
+  .st-x { opacity: 1; }
 }
 @media (prefers-reduced-motion: reduce) {
   .vb *, .vb *::before, .vb *::after { animation-duration: 1ms !important; animation-iteration-count: 1 !important; transition-duration: 1ms !important; scroll-behavior: auto !important; }

@@ -1,12 +1,12 @@
-/* Pain points: the illustrative library of 362 records, filtered by function, category, severity
-   and search with live faceted counts. Each record opens its step (or, for a standard wrapper step,
+/* Pain-point library: 362 illustrative failure points, filtered by function, category, severity
+   and search with live faceted counts. Each record opens its step (or, for one of the standard steps,
    its task) in Explore. Records render 50 at a time as the list scrolls. */
 import { computed, signal } from "@preact/signals";
 import { useEffect, useRef } from "preact/hooks";
 import { SEVERITIES, PAIN_NOTE, CATEGORY_LABELS, categoryLabel, stepLabel, isWrapper, type PainPoint, type Severity } from "../lib/data";
 import { route, go, hrefFor, shareUrl, pain, taxIdx, loadData, say, stepIdOf, type SortKey } from "./state";
 import { compile, matches } from "./search";
-import { Icon, FnIcon, Hl, SevMark, Still, Empty, ErrorState, Skel, Ill, Impact, painTitle, painImpact, painWhere, talkHref, plural, copyText } from "./ui";
+import { Icon, FnIcon, Hl, SevMark, Still, Empty, ErrorState, Skel, Impact, painTitle, painImpact, painWhere, talkHref, plural, copyText } from "./ui";
 
 const hayOf = new WeakMap<PainPoint, string>();
 const hay = (p: PainPoint) => {
@@ -96,7 +96,7 @@ function Filters({ inSheet = false }: { inSheet?: boolean }) {
         <section class="about" aria-labelledby="about-h">
           <div class="about-art"><Still name="atlas-blocks" sizes="264px" alt="" /></div>
           <h3 id="about-h">About this library</h3>
-          <p>{m.all.length} illustrative records written against the real taxonomy in the style of process-mining risk registers. {m.all.filter((p) => isWrapper(p.stepText)).length} of them sit on the standard wrapper steps, so they are shown at task level. They show the kind of evidence an engagement collects; they are not audited findings about any organization.</p>
+          <p>{m.all.length} illustrative failure points, written against the real taxonomy in the style of process-mining risk registers. {m.all.filter((p) => isWrapper(p.stepText)).length} of them sit on the standard steps around a task (confirm the inputs, check the output, decide whether it is complete, log and hand off), so they are shown at task level. They show the kind of evidence an engagement collects; they are not audited findings about any organization.</p>
         </section>
       )}
     </div>
@@ -141,7 +141,7 @@ function Results() {
     const el = sentinel.current; if (!el) return;
     const io = new IntersectionObserver(([e]) => { if (e.isIntersecting) limit.value += PAGE; }, { root: document.getElementById("pv-scroll"), rootMargin: "600px 0px" });
     io.observe(el); return () => io.disconnect();
-  }, [limit.value < n]);
+  }, [limit.value, n]);
   const chips: { label: string; clear: () => void }[] = [];
   if (r.pq) chips.push({ label: `“${r.pq}”`, clear: () => go({ pq: "" }, { replace: true }) });
   for (const s of r.sev) chips.push({ label: s, clear: () => go({ sev: r.sev.filter((x) => x !== s) }, { replace: true }) });
@@ -155,7 +155,7 @@ function Results() {
         <div class="pv-title-row">
           <div>
             <h2 id="pv-h" class="pv-title" tabIndex={-1}>Pain-point library</h2>
-            <p class="pv-count" aria-live="polite" aria-atomic="true"><span class="num">{n}</span> of {m.all.length} illustrative pain points{nf ? " match" : ""} <Ill /></p>
+            <p class="pv-count" aria-live="polite" aria-atomic="true"><span class="num">{n}</span> of {m.all.length} illustrative failure points{nf ? " match" : ""}</p>
           </div>
           <div class="pv-tools">
             <button type="button" class="b b-ghost b-sm only-mobile" onClick={() => sheet.current?.showModal()} aria-haspopup="dialog">
@@ -185,7 +185,7 @@ function Results() {
         )}
       </header>
       {n === 0 ? (
-        <Empty still="atlas-stepped" title="No pain points match these filters."
+        <Empty still="atlas-stepped" title="No failure points match these filters."
           action={<button type="button" class="b b-ghost" onClick={clearAll}><Icon name="reset" />Clear all filters</button>}>
           <p>Each filter narrows the others. Remove one, or search a broader word.</p>
         </Empty>
@@ -200,7 +200,7 @@ function Results() {
           <button type="button" class="sheet-x" onClick={() => sheet.current?.close()} aria-label="Close filters"><Icon name="close" /></button>
           <Filters inSheet />
         </div>
-        <div class="sheet-foot"><button type="button" class="b b-primary b-block" onClick={() => sheet.current?.close()}>Show {plural(n, "pain point")}</button></div>
+        <div class="sheet-foot"><button type="button" class="b b-primary b-block" onClick={() => sheet.current?.close()}>Show {plural(n, "failure point")}</button></div>
       </dialog>
     </div>
   );
@@ -211,7 +211,7 @@ function Record({ p, hl }: { p: PainPoint; hl: string[] }) {
   const open = { view: "explore" as const, fn: p.functionId, p: p.processId, s: sid, q: "", tab: "steps" as const };
   return (
     <li class={`rec sev-${p.severity}`}>
-      <p class="rec-meta"><SevMark sev={p.severity} /><span class="rec-cat">{categoryLabel(p.category, p.categoryLabel)}</span><Ill /></p>
+      <p class="rec-meta"><SevMark sev={p.severity} /><span class="rec-cat">{categoryLabel(p.category, p.categoryLabel)}</span></p>
       <h3 class="rec-title">
         <a href={hrefFor(open)} class="rec-link" onClick={(e) => { e.preventDefault(); go(open); }}>
           <Hl text={painTitle(p)} hl={hl} />
@@ -226,6 +226,7 @@ function Record({ p, hl }: { p: PainPoint; hl: string[] }) {
         </p>
         <p class="rp-step">
           {where.wrapper ? <span class="rp-st">{where.text}</span>
+            : where.itself ? <><span class="code">{sid}</span><span class="rp-st">{where.text}</span></>
             : <><span class="code">{sid}</span><span class="rp-st">{where.text}: <Hl text={stepLabel(p.stepText, p.taskName)} hl={hl} /></span></>}
         </p>
       </div>

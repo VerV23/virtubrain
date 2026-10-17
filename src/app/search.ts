@@ -7,7 +7,16 @@
      list says "Showing results for ...". */
 import type { ProcRef } from "../lib/data";
 
+const PAYABLE = ["accounts payable", "payable", "supplier invoice", "invoice matching", "payment runs", "supplier payment", "remittance advice", "receipt-invoice", "reimbursement"];
+const RECEIVABLE = ["accounts receivable", "receivable", "collections", "cash application", "billing"];
 export const SYNONYMS: Record<string, string[]> = {
+  // phrases are matched before the query is split into words
+  "accounts payable": PAYABLE, "accounts receivable": RECEIVABLE, "general ledger": ["general ledger", "journal entries"],
+  "purchase order": ["purchase order", "purchase requisition"], "order to cash": ["order to cash", "billing", "collections"],
+  "procure to pay": ["procure-to-pay", "purchase order", "invoice matching"], "record to report": ["record to report", "general ledger", "period-end"],
+  "help desk": ["help desk", "helpdesk", "self-service", "inquiries"], "month end": ["period-end", "close"], "year end": ["period-end", "close"],
+  "contact center": ["contact center", "customer service"], "call center": ["contact center", "customer service"],
+  payable: PAYABLE, payables: PAYABLE, receivable: RECEIVABLE, receivables: RECEIVABLE,
   ap: ["accounts payable", "supplier invoice", "invoice matching", "payment runs"],
   ar: ["accounts receivable", "collections", "cash application"],
   p2p: ["procure-to-pay", "procure to pay", "purchase order", "invoice matching"],
@@ -42,8 +51,12 @@ const WORD = /[a-z0-9&-]+/g;
 export const termsOf = (q: string) => q.toLowerCase().replace(/[“”"'’]/g, " ").split(/\s+/).map((t) => t.replace(/^[^\w&]+|[^\w&]+$/g, "")).filter(Boolean).slice(0, 8);
 export const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
+const PHRASES = Object.keys(SYNONYMS).filter((k) => k.includes(" ")).sort((a, b) => b.length - a.length);
 export function compile(q: string): Query {
-  const terms = termsOf(q);
+  let text = " " + q.toLowerCase().replace(/[“”"'’]/g, " ").replace(/\s+/g, " ") + " ";
+  const terms: string[] = [];
+  for (const ph of PHRASES) if (text.includes(` ${ph} `)) { terms.push(ph); text = text.split(` ${ph} `).join(" "); }
+  terms.push(...termsOf(text));
   const alts = terms.map((t) => [t, ...(SYNONYMS[t] || [])]);
   // highlight sources: short words as word starts, synonyms as whole phrases
   const hl = [...new Set(alts.flatMap((a) => a.map((x, i) => (x.length <= 3 ? `\\b${esc(x)}${i === 0 && SYNONYMS[x] ? "\\b" : ""}` : esc(x)))))];
@@ -148,10 +161,12 @@ export function editDistance(a: string, b: string, max = 2): number {
   }
   return d[a.length][b.length];
 }
+const SYN_WORDS = Object.keys(SYNONYMS).filter((k) => !k.includes(" ") && k.length >= 4);
 export function correct(word: string, v: Map<string, number>): string | null {
   if (word.length < 4 || v.has(word) || SYNONYMS[word]) return null;
   const max = word.length >= 7 ? 2 : 1; let best: string | null = null, bestD = max + 1, bestN = 0;
-  for (const [w, n] of v) {
+  // the shorthand words ("payable", "receivables") are candidates too, weighted like common words
+  for (const [w, n] of [...v, ...SYN_WORDS.map((k) => [k, 50] as [string, number])]) {
     const dist = editDistance(word, w, max);
     if (dist < bestD || (dist === bestD && n > bestN)) { best = w; bestD = dist; bestN = n; }
   }
@@ -162,7 +177,7 @@ export function searchProcs(list: ProcRef[], q: string): Result {
   const Q = compile(q); const hits = run(list, Q);
   if (hits.length || !Q.terms.length) return { hits, Q };
   const v = vocab(list); let changed = false;
-  const fixed = Q.terms.map((t) => { const c = correct(t, v); if (c) { changed = true; return c; } return t; });
+  const fixed = Q.terms.flatMap((t) => t.split(" ")).map((t) => { const c = correct(t, v); if (c) { changed = true; return c; } return t; });
   if (!changed) return { hits, Q };
   const Q2 = compile(fixed.join(" ")); const hits2 = run(list, Q2);
   return hits2.length ? { hits: hits2, Q: Q2, corrected: fixed.join(" ") } : { hits, Q };

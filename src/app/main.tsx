@@ -1,5 +1,6 @@
 /* The VirtuBrain app shell: toolbar (views, search), a first-run strip, the active view, status bar, toasts. */
 import { render } from "preact";
+import { effect } from "@preact/signals";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { route, go, hrefFor, VIEWS, tax, currentProc, toast, announce, loadData, keysOn, setKeys, focusHeading, pref, type View } from "./state";
 import { Explore, listKey, listActive, mPane, activeOptionId } from "./explore";
@@ -61,6 +62,9 @@ function switchView(view: View, o: { focus?: boolean } = {}) {
 }
 
 const introSeen = pref("vb-intro-seen", false);
+// the strip has done its job once the reader opens another view or a process
+const firstKey = `${route.peek().view}|${route.peek().p || ""}`;
+effect(() => { const r = route.value; if (`${r.view}|${r.p || ""}` !== firstKey && !introSeen.value) introSeen.value = true; });
 function Intro() {
   if (introSeen.value) return null;
   return (
@@ -70,7 +74,7 @@ function Intro() {
         <li><b>Pain points</b> Browse 362 illustrative failure points, each tied to the task or step where it shows up.</li>
         <li><b>X-ray</b> Sort a process's steps by who should run them: an AI agent, an AI agent with a person approving, or people.</li>
       </ul>
-      <p class="intro-short">Explore 142 processes, browse 362 illustrative pain points, or X-ray a process to sort its steps by who should run them.</p>
+      <p class="intro-short">Explore 142 processes, browse 362 illustrative failure points, or X-ray a process to sort its steps by who should run them.</p>
       <button type="button" class="b b-ghost b-sm intro-x" onClick={() => { introSeen.value = true; focusHeading(); }}>Got it</button>
     </aside>
   );
@@ -116,8 +120,8 @@ function Search() {
   const pending = useRef<number>(0); const lastSent = useRef(routeValue);
   // follow the URL when it changes from elsewhere (Esc, clear filters, Back/Forward, view switch)
   useEffect(() => { if (routeValue !== lastSent.current) { clearTimeout(pending.current); setText(routeValue); lastSent.current = routeValue; } }, [routeValue, view]);
-  const label = view === "explore" ? "Search all 142 processes" : view === "pain" ? "Search 362 illustrative pain points" : "Find a process to X-ray";
-  const placeholder = view === "explore" ? "Search processes, or try AP, P2P, month-end" : view === "pain" ? "Search pain points" : "Find a process to X-ray";
+  const label = view === "explore" ? "Search all 142 processes" : view === "pain" ? "Search 362 illustrative failure points" : "Find a process to X-ray";
+  const placeholder = view === "explore" ? "Search processes, or try AP, P2P, month-end" : view === "pain" ? "Search failure points" : "Find a process to X-ray";
   const input = useRef<HTMLInputElement>(null);
   const commit = (v: string) => {
     lastSent.current = v;
@@ -128,7 +132,7 @@ function Search() {
     setText(v);
     if (view === "xray") { pickQ.value = v; lastSent.current = v; pickOpen.value = true; pickActive.value = 0; return; }
     clearTimeout(pending.current);
-    if (now) commit(v); else pending.current = window.setTimeout(() => commit(v), view === "pain" ? 120 : 60);
+    if (now) commit(v); else pending.current = window.setTimeout(() => commit(v), view === "pain" ? 120 : 150);
   };
   const flush = () => { if (text !== lastSent.current && view !== "xray") { clearTimeout(pending.current); commit(text); } };
   const combo = view !== "pain";
@@ -143,8 +147,8 @@ function Search() {
         aria-controls={combo ? (view === "explore" ? "vb-proclist" : "xr-picklist") : undefined}
         aria-activedescendant={view === "explore" ? activeOptionId() : view === "xray" && pickOpen.value && pickItems.value.length ? `pk-${pickActive.value}` : undefined}
         onInput={(e) => set((e.currentTarget as HTMLInputElement).value)}
-        onFocus={() => { if (view === "xray") { pickOpen.value = true; } }}
-        onBlur={() => { flush(); if (view === "xray") setTimeout(() => { if (document.activeElement !== input.current) pickOpen.value = false; }, 120); }}
+        onFocus={() => { document.querySelector(".vb")?.setAttribute("data-search-focus", ""); if (view === "xray") { pickOpen.value = true; } }}
+        onBlur={() => { document.querySelector(".vb")?.removeAttribute("data-search-focus"); flush(); if (view === "xray") setTimeout(() => { if (document.activeElement !== input.current) pickOpen.value = false; }, 120); }}
         onKeyDown={(e) => {
           if (view === "explore") { if (e.key === "Enter" || e.key.startsWith("Arrow")) flush(); if (listKey(e)) return; }
           else if (view === "xray") { if (pickerKey(e)) return; }
@@ -192,7 +196,7 @@ function StatusBar({ onShortcuts }: { onShortcuts: () => void }) {
     <footer class="vb-status">
       <p class="st-data">
         {s ? <><span class="num">{s.functions}</span> functions, <span class="num">{s.processes}</span> processes, <span class="num">{s.steps.toLocaleString("en-US")}</span> steps. </> : t.state === "error" ? "The process library didn't load. " : "Loading the process library. "}
-        <span class="st-ill">Pain points are illustrative.</span>
+        <span class="st-ill">Failure points are illustrative.</span>
       </p>
       <p class="st-legal">General information on process design. Not legal, tax or regulatory advice.</p>
       <div class="st-right">

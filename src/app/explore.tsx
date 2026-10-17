@@ -1,11 +1,11 @@
 /* Explore: function rail -> process list (grouped, searchable) -> process detail. The detail opens on its
-   Breakdown tab: activities and tasks as a vertical flow, the 12 standard wrapper steps folded away by
-   default, pain points pinned to core steps (or to the task, when they sit on a wrapper step). */
+   Breakdown tab: activities and tasks as a vertical flow, the standard steps around each task folded away by
+   default, failure points pinned to core steps (or to the task, when they sit on a standard step). */
 import { signal, computed } from "@preact/signals";
 import { useEffect, useLayoutEffect, useRef } from "preact/hooks";
 import {
   INDUSTRIES, COUNTRIES, SEVERITIES, PAIN_NOTE, ZONES, zoneOf, gatewayOf, stepKey, taskKey, categoryLabel, wrapperOf, isWrapper,
-  stepLabel, isTemplatedIO, humanizeIO, WRAPPER_WHERE,
+  stepLabel, isTemplatedIO, humanizeIO, WRAPPER_WHERE, isTaskItself, displayDescription,
   type ProcRef, type PainPoint, type Task, type Industry, type Country,
 } from "../lib/data";
 import { route, go, goBack, hrefFor, shareUrl, tax, pain, taxIdx, painIdx, currentProc, currentFnId, loadData, say, stepIdOf, parseStepId, keyOf, pref, type DetailTab } from "./state";
@@ -233,8 +233,8 @@ function ProcList() {
                       <span class="opt-meta">
                         {ref.flagship && <span class="tag-l6" title="Curated step detail">L6</span>}
                         {pains.length > 0 && (
-                          <span class={`pc sev-${top}`} title={`${plural(pains.length, "illustrative pain point")}, highest ${top.toLowerCase()}`}>
-                            <i aria-hidden="true" />{pains.length}<span class="sr-only"> illustrative pain points, highest {top}</span>
+                          <span class={`pc sev-${top}`} title={`${plural(pains.length, "illustrative failure point")}, highest ${top.toLowerCase()}`}>
+                            <i aria-hidden="true" />{pains.length}<span class="sr-only"> illustrative failure points, highest {top}</span>
                           </span>
                         )}
                       </span>
@@ -307,16 +307,16 @@ function Detail() {
               {ref.flagship && <span class="badge"><span class="tag-l6" aria-hidden="true">L6</span>Curated step detail</span>}
             </div>
             <h2 id="proc-title" class="d-title" tabIndex={-1}>{proc.name}</h2>
-            <p class="d-desc">{proc.description}</p>
+            <p class="d-desc">{displayDescription(proc, fn.functionId)}</p>
             <div class="d-bar">
               <dl class="readout">
                 <div><dt>Activities</dt><dd class="num">{proc.activities.length}</dd></div>
                 <div><dt>Tasks</dt><dd class="num">{ref.taskCount}</dd></div>
                 <div><dt>Steps</dt><dd class="num">{ref.stepCount}<span class="dd-sub">{core} core</span></dd></div>
-                <div><dt>Pain points <Ill /></dt><dd class="num">{painD.state === "ready" ? pins.length : painD.state === "error" ? "–" : "…"}</dd></div>
+                <div><dt>Failure points <Ill /></dt><dd class="num">{painD.state === "ready" ? pins.length : painD.state === "error" ? "–" : "…"}</dd></div>
               </dl>
               <div class="d-actions">
-                <a class="b b-primary" href={hrefFor({ view: "xray", fn: fn.functionId, p: proc.id })} onClick={(e) => { e.preventDefault(); go({ view: "xray", fn: fn.functionId, p: proc.id }); }}><Icon name="xray" />X-ray this process</a>
+                <a class="b b-primary" href={hrefFor({ view: "xray", fn: fn.functionId, p: proc.id })} onClick={(e) => { e.preventDefault(); go({ view: "xray", fn: fn.functionId, p: proc.id }, { focus: true }); }}><Icon name="xray" />X-ray this process</a>
                 <button type="button" class="b b-ghost" onClick={async () => {
                   const ok = await copyText(shareUrl({ s: r.s }));
                   say(ok ? "Link copied" : "Couldn't copy. The link is in the address bar.", { tone: ok ? "ok" : "warn" });
@@ -428,18 +428,18 @@ function PainTab({ pr }: { pr: ProcRef }) {
       <div class="d-sec-head">
         <div>
           <h3 id="pp-h" class="h-md">Where it breaks <Ill /></h3>
-          {painD.state === "ready" && <p class="d-sec-sub">{plural(pins.length, "illustrative pain point")}{sevCount.length ? ": " : ""}{sevCount.map(([s, n], i) => <span key={s}>{i ? ", " : ""}{n} {s.toLowerCase()}</span>)}</p>}
+          {painD.state === "ready" && <p class="d-sec-sub">{plural(pins.length, "failure point")}{sevCount.length ? ": " : ""}{sevCount.map(([s, n], i) => <span key={s}>{i ? ", " : ""}{n} {s.toLowerCase()}</span>)}</p>}
         </div>
       </div>
       {painD.state === "loading" && <Skel rows={3} />}
-      {painD.state === "error" && <p class="inline-err">Pain points didn't load. <button type="button" class="linkish" onClick={() => loadData()}>Try again</button></p>}
+      {painD.state === "error" && <p class="inline-err">Failure points didn't load. <button type="button" class="linkish" onClick={() => loadData()}>Try again</button></p>}
       {painD.state === "ready" && (pins.length ? (
         <ul class="pp-list">
           {pins.map((p) => {
             const sid = stepIdOf(p.taskId, p.stepIndex); const where = painWhere(p);
             return (
               <li key={p.id} class={`pp-item sev-${p.severity}`}>
-                <p class="pin-meta"><SevMark sev={p.severity} /><span class="pin-cat">{categoryLabel(p.category, p.categoryLabel)}</span><Ill /></p>
+                <p class="pin-meta"><SevMark sev={p.severity} /><span class="pin-cat">{categoryLabel(p.category, p.categoryLabel)}</span></p>
                 <p class="pin-title">{painTitle(p)}</p>
                 <Impact p={p} />
                 <p class="pp-where"><span class="code">{where.wrapper ? p.taskId : sid}</span>{where.wrapper ? <> Task: {p.taskName}. {where.text}</> : <> {where.text}: {stepLabel(p.stepText, p.taskName)}</>}</p>
@@ -451,7 +451,7 @@ function PainTab({ pr }: { pr: ProcRef }) {
             );
           })}
         </ul>
-      ) : <p class="muted">No pain points recorded for this process.</p>)}
+      ) : <p class="muted">No failure points recorded for this process.</p>)}
       <p class="note">{PAIN_NOTE}</p>
     </section>
   );
@@ -469,7 +469,7 @@ function Breakdown({ pr }: { pr: ProcRef }) {
           <h3 id="flow-h" class="h-md">Breakdown to the step</h3>
           <p class="d-sec-sub">
             {proc.hasStepDetail ? "A flagship process: one task carries curated steps. " : ""}
-            {nWrap ? `${nWrap} of the ${pr.stepCount} steps follow the standard pattern (receive, check, decide, hand off) that an engagement replaces with your own steps.` : "Every step here is curated."}
+            {nWrap ? `Tasks follow a standard five-step pattern: confirm the inputs, do the task, check the output, decide whether it is complete, then log and hand off. ${nWrap} of the ${pr.stepCount} steps are those standard steps, and an engagement replaces them with your own.` : "Every step here is curated."}
           </p>
         </div>
       </div>
@@ -502,7 +502,7 @@ function Legend({ zones }: { zones: boolean }) {
       <li><span class="lg lg-task" aria-hidden="true" />Step</li>
       <li><span class="lg lg-gw" aria-hidden="true" />Decision point</li>
       <li><span class="lg lg-std" aria-hidden="true" />Standard step</li>
-      <li><span class="lg lg-pain sev-High" aria-hidden="true" /><span class="lg lg-pain sev-Medium" aria-hidden="true" /><span class="lg lg-pain sev-Low" aria-hidden="true" />Pain point by severity <Ill /></li>
+      <li><span class="lg lg-pain sev-High" aria-hidden="true" /><span class="lg lg-pain sev-Medium" aria-hidden="true" /><span class="lg lg-pain sev-Low" aria-hidden="true" />Failure point by severity <Ill /></li>
       {zones && (Object.keys(ZONES) as (keyof typeof ZONES)[]).map((z) => <li key={z}><ZoneMark zone={z} label={ZONES[z].label} /></li>)}
     </ul>
   );
@@ -535,7 +535,7 @@ function Flow({ pr }: { pr: ProcRef }) {
             <h4 class="act-head">
               <button type="button" aria-expanded={open} aria-controls={`act-${a.id}`} onClick={() => toggleIn(collapsed, `${key}:${a.id}`)}>
                 <Icon name="chevron" class="chev" /><span class="code">{a.id}</span><span class="act-name">{a.name}</span>
-                <span class="act-n">{plural(a.tasks.length, "task")}{nPain ? `, ${plural(nPain, "pain point")}` : ""}</span>
+                <span class="act-n">{plural(a.tasks.length, "task")}{nPain ? `, ${plural(nPain, "failure point")}` : ""}</span>
               </button>
             </h4>
             {open && <ol class="fl-tasks" id={`act-${a.id}`}>{a.tasks.map((t) => <FlowTask key={t.id} t={t} pr={pr} />)}</ol>}
@@ -561,7 +561,7 @@ function FlowTask({ t, pr }: { t: Task; pr: ProcRef }) {
       <h5 class="task-head" id={`task-${t.id}-h`}>
         <button type="button" aria-expanded={open} aria-controls={`steps-${t.id}`} onClick={() => toggleIn(collapsed, `${key}:${t.id}`)}>
           <Icon name="chevron" class="chev" /><span class="code"><span class="sr-only">Task </span>{t.id}</span><span class="task-name">{t.name}</span>
-          {taskPins.length > 0 && <span class={`pc sev-${taskPins[0].severity}`}><i aria-hidden="true" />{taskPins.length}<span class="sr-only"> illustrative pain points at task level</span></span>}
+          {taskPins.length > 0 && <span class={`pc sev-${taskPins[0].severity}`}><i aria-hidden="true" />{taskPins.length}<span class="sr-only"> illustrative failure points at task level</span></span>}
         </button>
       </h5>
       {open && (
@@ -592,7 +592,7 @@ function FlowTask({ t, pr }: { t: Task; pr: ProcRef }) {
                         onClick={(e) => { e.preventDefault(); go({ view: "xray", fn: pr.fn.functionId, p: pr.proc.id, basis: w ? "all" : route.value.basis }); requestAnimationFrame(() => focusXrayStep(sid)); }}
                         aria-label={`See step ${sid} in the X-ray`}><Icon name="xray" /><span class="st-x-l">X-ray</span></a>
                     </div>
-                    <p class="st-text" id={`step-${sid}-t`}>{stepLabel(s, t.name)}</p>
+                    <p class={`st-text${isTaskItself(s, t.name) ? " is-itself" : ""}`} id={`step-${sid}-t`}>{isTaskItself(s, t.name) ? `Step ${i + 1} of ${t.steps.length}: the task itself` : stepLabel(s, t.name)}</p>
                     {gw && (
                       <p class="branch">
                         <span class="br-off"><span class="br-l">{gw.off}</span><span class="br-line" aria-hidden="true" />{gw.offText}</span>
@@ -608,7 +608,7 @@ function FlowTask({ t, pr }: { t: Task; pr: ProcRef }) {
               <li class="st-fold">
                 <button type="button" aria-expanded={stdOpen} onClick={() => toggleIn(openStd, tk)}>
                   <span class="fold-n num">{wrappers.length}</span>
-                  <span>{stdOpen ? "Hide the standard steps" : `standard steps: ${wrappers.map((x) => x.w!.label.toLowerCase()).join(", ")}`}</span>
+                  <span>{stdOpen ? "Hide the standard steps" : `standard steps: ${[...new Set(wrappers.map((x) => x.w!.label))].join(", ")}`}</span>
                 </button>
               </li>
             )}
@@ -622,7 +622,7 @@ function FlowTask({ t, pr }: { t: Task; pr: ProcRef }) {
 function Pin({ p, where }: { p: PainPoint; where?: string }) {
   return (
     <div class={`pin sev-${p.severity}`}>
-      <p class="pin-meta"><SevMark sev={p.severity} /><span class="pin-cat">{categoryLabel(p.category, p.categoryLabel)}</span><Ill />{where && <span class="pin-where">{where}</span>}</p>
+      <p class="pin-meta"><SevMark sev={p.severity} /><span class="pin-cat">{categoryLabel(p.category, p.categoryLabel)}</span>{where && <span class="pin-where">{where}</span>}</p>
       <p class="pin-title">{painTitle(p)}</p>
       <Impact p={p} />
       <p class="pin-acts"><a href={talkHref(p)}>Talk to us about this step</a></p>

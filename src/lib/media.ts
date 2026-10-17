@@ -8,7 +8,6 @@ import catalog from "../media-catalog.json";
 export type Still = { w: number; h: number; widths: number[]; world: string; alt: string; src: string };
 export const STILLS = catalog.stills as Record<string, Still>;
 export const LOOPS = catalog.loops as Record<string, { mp4: string; webm: string; poster: string; alt: string }>;
-export const ICONS = catalog.icons as Record<string, string>;
 
 export function srcset(name: string) {
   const s = STILLS[name];

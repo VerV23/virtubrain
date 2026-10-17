@@ -7,7 +7,8 @@
                                      complete and nothing changes when the digest loads. Do not edit by hand. */
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { indexTaxonomy, zoneOf, humanizeTitle, humanizeStep, CATEGORY_LABELS, INDUSTRIES, COUNTRIES, type Taxonomy, type PainLibrary, type PainPoint, type Process, type Fn, type Zone } from "../src/lib/data.ts";
+import * as data from "../src/lib/data.ts";
+import { indexTaxonomy, zoneOf, isWrapper, humanizeTitle, humanizeStep, CATEGORY_LABELS, INDUSTRIES, COUNTRIES, type Taxonomy, type PainLibrary, type PainPoint, type Process, type Fn, type Zone } from "../src/lib/data.ts";
 
 const ROOT = resolve(import.meta.dirname, "..");
 const T: Taxonomy = JSON.parse(readFileSync(resolve(ROOT, "public/data/master-taxonomy.json"), "utf8"));
@@ -37,8 +38,8 @@ for (const r of idx.list) {
 }
 
 // functions, in taxonomy order
-const flag = new Map<string, { id: string; name: string }>();
-for (const f of T.meta.flagshipProcesses) if (!flag.has(f.functionId)) flag.set(f.functionId, { id: f.processId, name: f.name });
+const flag = new Map<string, { id: string; name: string }[]>();
+for (const f of T.meta.flagshipProcesses) flag.set(f.functionId, [...(flag.get(f.functionId) ?? []), { id: f.processId, name: f.name }]);
 const functions = T.functions.map((f) => {
   const procs = f.processGroups.flatMap((g) => g.processes);
   const pains = P.painPoints.filter((p) => p.functionId === f.functionId);
@@ -46,35 +47,52 @@ const functions = T.functions.map((f) => {
     id: f.functionId, name: f.functionName, groups: f.processGroups.length, processes: procs.length,
     steps: procs.reduce((n, p) => n + stepsOf(p), 0),
     groupNames: f.processGroups.map((g) => g.groupName),
-    flagship: flag.get(f.functionId) ?? null,
+    flagships: flag.get(f.functionId) ?? [],
     pains: { total: pains.length, High: pains.filter((p) => p.severity === "High").length, Medium: pains.filter((p) => p.severity === "Medium").length, Low: pains.filter((p) => p.severity === "Low").length },
   };
 });
 
 // the calibration showcase: four flagship processes buyers recognise
+/* Plain-language descriptions for the showcase. The raw data uses dash asides; data.ts will export
+   displayDescription(proc) with the shared overrides, and this map is only the fallback until it does. */
+const DESC: Record<string, string> = {
+  "8.1.1": "Runs the period-end close from sub-ledger cutoff through journal posting, reconciliation, flux review and certification. More of it now runs continuously, with agents monitoring it.",
+  "7.1.2": "Receives goods and services, matches supplier invoices to the purchase order and receipt, resolves exceptions and pays suppliers on time, within controls. Agents increasingly handle the matching and exceptions.",
+  "6.4.2": "Runs payroll end to end. Keeps pay master data current, calculates and pays salaries, and remits statutory contributions and taxes on time.",
+  "9.1.1": "Runs the contact center and the service channels that receive, triage and route customer inquiries across voice, chat, email and self-service.",
+};
+const displayDescription = (data as { displayDescription?: (p: Process) => string }).displayDescription;
+const describe = (p: Process) => (displayDescription ? displayDescription(p) : DESC[p.id] ?? p.description);
 const LENS = [["finance-accounting", "8.1.1", "Period-end close"], ["procurement", "7.1.2", "Invoice matching and payment"], ["human-capital-management", "6.4.2", "Payroll"], ["marketing-sales-cx", "9.1.1", "Customer service"]] as const;
 const lens = LENS.map(([fnId, id, short]) => {
   const { fn, proc } = find(fnId, id);
   const c = proc.calibration;
-  return { fn: fnId, fnName: fn.functionName, id, short, name: proc.name, description: proc.description, industry: c.industry, country: c.country, systems: c.systems, kpis: c.kpis };
+  return { fn: fnId, fnName: fn.functionName, id, short, name: proc.name, description: describe(proc), industry: c.industry, country: c.country, systems: c.systems, kpis: c.kpis };
 });
 
-// the zone map's live first-pass sort, with the same rules the app uses
+// the zone map's live first-pass sort, with the same rules the app uses: the X-ray opens on core steps
+// (wrapper steps of the standard five-step pattern are folded and not counted), so home counts the same way
 const ZMAP = [["finance-accounting", "8.1.1"], ["procurement", "7.1.2"], ["marketing-sales-cx", "9.1.1"]] as const;
 const zones = ZMAP.map(([fnId, id]) => {
   const { fn, proc } = find(fnId, id);
   const c: Record<Zone, number> = { auto: 0, assist: 0, human: 0 };
-  for (const a of proc.activities) for (const t of a.tasks) for (const s of t.steps) c[zoneOf(s, t.name).zone]++;
-  return { fn: fnId, fnName: fn.functionName, id, name: proc.name, ...c, total: c.auto + c.assist + c.human };
+  let std = 0;
+  for (const a of proc.activities) for (const t of a.tasks) for (const s of t.steps) { if (isWrapper(s)) std++; else c[zoneOf(s, t.name).zone]++; }
+  return { fn: fnId, fnName: fn.functionName, id, name: proc.name, ...c, total: c.auto + c.assist + c.human, std };
 });
 
 // the library card: a few records per category, most severe first, without impact estimates (home shows
 // title, category, severity and the step path only). The featured record opens the card and ends the monolith film.
 const FEATURED = "pp-supply-chain-operations-logistics-4-2-2-4-2-2-1-1-1";
 const PER_CAT = 5;
-type Rec = { id: string; fn: string; fnName: string; pid: string; pname: string; tid: string; tname: string; step: number; stepText: string; title: string; sev: string; cat: string };
+// of: the number of steps in the record's task; self: the step is the task itself (step 2 of the standard pattern)
+type Rec = { id: string; fn: string; fnName: string; pid: string; pname: string; tid: string; tname: string; step: number; of: number; self: boolean; stepText: string; title: string; sev: string; cat: string };
+const taskSteps = new Map<string, number>();
+for (const f of T.functions) for (const g of f.processGroups) for (const p of g.processes) for (const a of p.activities) for (const t of a.tasks) taskSteps.set(`${f.functionId}|${t.id}`, t.steps.length);
+const same = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
 const slim = (p: PainPoint): Rec => ({ id: p.id, fn: p.functionId, fnName: p.functionName, pid: p.processId, pname: p.processName, tid: p.taskId, tname: p.taskName,
-  step: p.stepIndex, stepText: humanizeStep(p.stepText, p.taskName), title: humanizeTitle(p.title, p.taskName), sev: p.severity, cat: p.category });
+  step: p.stepIndex, of: taskSteps.get(`${p.functionId}|${p.taskId}`) ?? 0, self: same(p.stepText, p.taskName),
+  stepText: humanizeStep(p.stepText, p.taskName), title: humanizeTitle(p.title, p.taskName), sev: p.severity, cat: p.category });
 const cats = Object.keys(CATEGORY_LABELS).sort((a, b) => (P.meta.byCategory[b] ?? 0) - (P.meta.byCategory[a] ?? 0));
 const records: Record<string, Rec[]> = {};
 for (const cat of cats) {
@@ -159,7 +177,7 @@ write("ladder", `<ol class="ladder" aria-label="Example path, level by level">
   <li data-at="0.26"><span class="mono">L3</span><span><b class="mono">${esc(F.proc.id)}</b> ${esc(F.proc.name)}</span></li>
   <li data-at="0.5"><span class="mono">L4</span><span><b class="mono">${esc(act.id)}</b> ${esc(act.name)}</span></li>
   <li data-at="0.57"><span class="mono">L5</span><span><b class="mono">${esc(fullStep.id)}</b> ${esc(fullStep.name)}</span></li>
-  <li data-at="0.72"><span class="mono">L6</span><span><b class="mono">Step ${featured.step + 1} of ${fullStep.steps.length}</b> ${esc(featured.stepText)}</span></li>
+  <li data-at="0.72"><span class="mono">L6</span><span><b class="mono">Step ${featured.step + 1} of ${fullStep.steps.length}${featured.self ? ":" : ""}</b> ${featured.self ? "the task itself" : esc(featured.stepText)}</span></li>
   <li data-at="0.9" class="ladder-fault sev-${featured.sev}"><span class="mono" aria-hidden="true">!</span><span><b class="mono">${featured.sev}</b> ${esc(CATEGORY_LABELS[featured.cat])}. <i>Illustrative</i></span></li>
 </ol>`);
 
@@ -174,7 +192,7 @@ const recBody = (r: Rec) => `<h3 class="rec-title" data-r="title">${esc(r.title)
               <li><span class="mono">Function</span><span>${esc(r.fnName)}</span></li>
               <li><span class="mono">Process</span><span><b class="mono">${esc(r.pid)}</b> ${esc(r.pname)}</span></li>
               <li><span class="mono">Task</span><span><b class="mono">${esc(r.tid)}</b> ${esc(r.tname)}</span></li>
-              <li class="rec-step sev-${r.sev}"><span class="mono">Step ${r.step + 1}</span><span>${esc(r.stepText)}</span></li>
+              <li class="rec-step sev-${r.sev}"><span class="mono">Step ${r.step + 1} of ${r.of}</span><span>${r.self ? "The task itself" : esc(r.stepText)}</span></li>
             </ol>`;
 const featIdx = records[featured.cat].findIndex((r) => r.id === featured.id);
 write("record", `<div class="rec-top">
@@ -196,13 +214,13 @@ write("record", `<div class="rec-top">
 // zone map: the live first-pass sort for the first tab
 const Z0 = zones[0];
 write("zsort", `<div class="zsort-head">
-            <p class="zsort-t">First-pass sort of the real steps in <span data-zs="fn">${esc(Z0.fnName)}</span> <b class="mono" data-zs="id">${esc(Z0.id)}</b> <span data-zs="name">${esc(Z0.name)}</span></p>
+            <p class="zsort-t">First-pass sort of the <span data-zs="total">${Z0.total}</span> core steps in <span data-zs="fn">${esc(Z0.fnName)}</span> <b class="mono" data-zs="id">${esc(Z0.id)}</b> <span data-zs="name">${esc(Z0.name)}</span>.</p>
             <a class="btn btn-sm" data-zs="link" href="/app/#view=xray&amp;fn=${Z0.fn}&amp;p=${encodeURIComponent(Z0.id)}">X-ray this process</a>
           </div>
-          <div class="zbar" data-zs="bar" role="img" aria-label="${Z0.auto} auto, ${Z0.assist} assist and ${Z0.human} human steps out of ${Z0.total}">
+          <div class="zbar" data-zs="bar" role="img" aria-label="Auto ${Z0.auto}, Assist ${Z0.assist}, Human ${Z0.human} of ${Z0.total} core steps">
             <i class="z-auto" style="--n:${Z0.auto}"><b class="num">${Z0.auto}</b></i><i class="z-assist" style="--n:${Z0.assist}"><b class="num">${Z0.assist}</b></i><i class="z-human" style="--n:${Z0.human}"><b class="num">${Z0.human}</b></i>
           </div>
-          <p class="zkey zsort-key" data-zs="key" aria-hidden="true"><span class="z-auto"><span class="dot"></span>Auto ${Z0.auto}</span><span class="z-assist"><span class="dot"></span>Assist ${Z0.assist}</span><span class="z-human"><span class="dot"></span>Human ${Z0.human}</span><span class="zsort-total">of ${Z0.total} steps</span></p>`);
+          <p class="zkey zsort-key" data-zs="key" aria-hidden="true"><span class="z-auto"><span class="dot"></span>Auto ${Z0.auto}</span><span class="z-assist"><span class="dot"></span>Assist ${Z0.assist}</span><span class="z-human"><span class="dot"></span>Human ${Z0.human}</span><span class="zsort-total">${Z0.std} standard steps not counted</span></p>`);
 
 // thirteen functions gallery, taxonomy order
 write("gallery", functions.map((f) => {
@@ -211,7 +229,7 @@ write("gallery", functions.map((f) => {
           <span class="fn-top"><span class="fn-ico" style="--ico:url(/media/icons/${f.id}.webp)" aria-hidden="true"></span><span class="fn-procs mono"><b>${f.processes}</b> processes</span></span>
           <span class="fn-name">${esc(f.name)}</span>
           <span class="fn-groups">${groups}</span>
-          <span class="fn-flag">${f.flagship ? `<span class="fn-flag-k mono">Flagship</span><span>${esc(f.flagship.name)}</span>` : `<span class="fn-flag-k mono">Groups</span><span>${f.groups} process groups</span>`}</span>
+          ${f.flagships.length ? `<span class="fn-flag"><span class="fn-flag-k mono">${f.flagships.length > 1 ? "Flagships" : "Flagship"}</span><span>${f.flagships.map((x) => esc(x.name)).join(" · ")}</span></span>` : ""}
           <span class="fn-stats"><span><b class="num">${n(f.steps)}</b> steps</span><span><b class="num">${f.groups}</b> groups</span></span>
           <span class="fn-sev" aria-label="${f.pains.total} illustrative failure points: ${f.pains.High} high, ${f.pains.Medium} medium, ${f.pains.Low} low">
             <span class="fn-sev-k"><span class="mono">${f.pains.total} failure points</span><span class="ill-chip">Illustrative</span></span>

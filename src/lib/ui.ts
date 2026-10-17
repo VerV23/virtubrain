@@ -63,7 +63,9 @@ export function skinAt(x: number, y: number, ignore: Element[] = []): string {
   if (worldsStale) mapWorlds();
   const dy = y + scrollY, dx = x + scrollX;
   let best: World | null = null;
+  const minW = innerWidth * 0.5; // tiles and cards inside a section never decide the bar's skin
   for (const w of worlds) {
+    if (w.r - w.l < minW && !w.el.dataset.skin) continue;
     if (dy < w.t || dy >= w.b || dx < w.l || dx >= w.r) continue;
     if (ignore.some((g) => g === w.el || g.contains(w.el))) continue;
     if (!best || w.area < best.area) best = w;
@@ -73,17 +75,14 @@ export function skinAt(x: number, y: number, ignore: Element[] = []): string {
 
 /* ---------- sticky local nav: highlights the section in view ----------
    <nav class="lnav" data-lnav data-skin-follow> also takes the skin of the section beneath it, so the
-   global header (which reads the element under itself) and the local bar always match. */
+   global header (which reads the element under itself) and the local bar always match.
+   Scroll work is two-phase: geometry is read in read(), classes and styles are written in write().
+   Link offsets are measured only when the bar resizes, never during a scroll frame. */
 export function initLocalNav() {
   const nav = document.querySelector<HTMLElement>("[data-lnav]");
   if (!nav) return;
-  if (nav.hasAttribute("data-skin-follow")) {
-    const chrome = [nav, ...document.querySelectorAll(".site-nav")];
-    onFrame(() => {
-      const next = skinAt(innerWidth / 2, nav.getBoundingClientRect().bottom + 2, chrome);
-      if (nav.dataset.skin !== next) nav.dataset.skin = next;
-    });
-  }
+  const follow = nav.hasAttribute("data-skin-follow");
+  const chrome = [nav, ...document.querySelectorAll(".site-nav")];
   const list = nav.querySelector<HTMLElement>(".lnav-links")!;
   const links = [...list.querySelectorAll<HTMLAnchorElement>('a[href^="#"]')];
   const secs = links.map((a) => document.getElementById(decodeURIComponent(a.hash.slice(1))));
@@ -91,13 +90,21 @@ export function initLocalNav() {
   ind.className = "lnav-ind instant";
   ind.setAttribute("aria-hidden", "true");
   list.append(ind);
+  let geo = links.map(() => ({ l: 0, w: 0 })), overflow = false, listW = 0;
   let cur = -2;
   const place = () => {
-    const a = links[cur];
-    if (!a) { ind.style.setProperty("--o", "0"); return; }
-    ind.style.setProperty("--x", `${a.offsetLeft}px`);
-    ind.style.setProperty("--w", `${a.offsetWidth}px`);
+    const g = geo[cur];
+    if (!g) { ind.style.setProperty("--o", "0"); return; }
+    ind.style.setProperty("--x", `${g.l}px`);
+    ind.style.setProperty("--w", `${g.w}px`);
     ind.style.setProperty("--o", "1");
+  };
+  const measure = () => {
+    geo = links.map((a) => ({ l: a.offsetLeft, w: a.offsetWidth }));
+    listW = list.clientWidth;
+    overflow = list.scrollWidth > listW + 2;
+    list.classList.toggle("overflows", overflow);
+    place();
   };
   const set = (i: number) => {
     if (i === cur) return;
@@ -105,26 +112,32 @@ export function initLocalNav() {
     links.forEach((a, k) => (k === i ? a.setAttribute("aria-current", "true") : a.removeAttribute("aria-current")));
     place();
     // on narrow screens the links may scroll: bring the active one fully into view, never half of one
-    const a = links[i];
-    if (a && list.scrollWidth > list.clientWidth + 2) {
-      const l = a.offsetLeft, r = l + a.offsetWidth;
-      if (l < list.scrollLeft || r > list.scrollLeft + list.clientWidth - 24) {
-        list.scrollTo({ left: Math.max(0, l - (list.clientWidth - a.offsetWidth) / 2), behavior: reduce() ? "auto" : "smooth" });
+    const g = geo[i];
+    if (g && overflow) {
+      const sl = list.scrollLeft;
+      if (g.l < sl || g.l + g.w > sl + listW - 24) {
+        list.scrollTo({ left: Math.max(0, g.l - (listW - g.w) / 2), behavior: reduce() ? "auto" : "smooth" });
       }
     }
   };
-  onFrame(() => {
-    const line = nav.getBoundingClientRect().bottom + innerHeight * 0.22;
-    let i = -1;
-    secs.forEach((s, k) => { if (s && s.getBoundingClientRect().top <= line) i = k; });
-    // past the end of the last section (CTA, footer): keep the last item lit only while it is on screen
-    const last = secs[secs.length - 1];
-    if (i === secs.length - 1 && last && last.getBoundingClientRect().bottom < nav.getBoundingClientRect().bottom) i = -1;
-    set(i);
+  onFrame({
+    read: () => {
+      const navBottom = nav.getBoundingClientRect().bottom;
+      const line = navBottom + innerHeight * 0.22;
+      let i = -1;
+      secs.forEach((s, k) => { if (s && s.getBoundingClientRect().top <= line) i = k; });
+      // past the end of the last section (CTA, footer): keep the last item lit only while it is on screen
+      const last = secs[secs.length - 1];
+      if (i === secs.length - 1 && last && last.getBoundingClientRect().bottom < navBottom) i = -1;
+      return { i, skin: follow ? skinAt(innerWidth / 2, navBottom + 2, chrome) : "" };
+    },
+    write: ({ i, skin }: { i: number; skin: string }) => {
+      if (follow && nav.dataset.skin !== skin) nav.dataset.skin = skin;
+      set(i);
+    },
   });
-  const fit = () => { list.classList.toggle("overflows", list.scrollWidth > list.clientWidth + 2); place(); };
-  new ResizeObserver(fit).observe(list);
-  document.fonts?.ready.then(fit);
+  new ResizeObserver(measure).observe(list);
+  document.fonts?.ready.then(measure);
   requestAnimationFrame(() => requestAnimationFrame(() => ind.classList.remove("instant")));
 }
 
@@ -233,7 +246,8 @@ export function initFaq(root: ParentNode = document) {
    The real number stays in the HTML and the DOM until the numeral is about to scroll into view, so
    captures, reader modes and crawlers always read it. Just below the fold it is zeroed, then it counts
    up once on screen; if the reader turns back first, the real value is restored. Screen readers get
-   the final value up front from an sr-only copy. Numbers with a comma keep it narrow (<span class="sep">). */
+   the final value up front from an sr-only copy. Numbers with a comma keep it narrow (<span class="sep">).
+   An inline numeral keeps the width of its final value while it counts, so the words after it never move. */
 export function initCounts(root: ParentNode = document) {
   const els = [...root.querySelectorAll<HTMLElement>("[data-count]")];
   if (!els.length) return;
@@ -261,18 +275,28 @@ export function initCounts(root: ParentNode = document) {
     const r = el.getBoundingClientRect();
     // on screen at load, or reduced motion: the real value simply stays
     if (reduce() || (r.top < innerHeight && r.bottom > 0)) return;
+    if (getComputedStyle(el).display === "inline") { el.style.display = "inline-block"; el.style.minWidth = `${r.width}px`; }
     items.push({ el, to: Number(el.dataset.count), state: "final" });
   });
   if (!items.length) return;
-  onFrame(() => {
-    const vh = innerHeight;
-    for (const it of items) {
-      if (it.state === "done") continue;
-      const r = it.el.getBoundingClientRect();
-      if (r.top < vh * 0.88 && r.bottom > 0) { it.state = "done"; run(it.el); }
-      else if (r.top >= vh && r.top < vh * 1.35) { if (it.state !== "zero") { it.state = "zero"; show(it.el, 0); } }
-      else if (it.state === "zero") { it.state = "final"; show(it.el, it.to); }
-    }
+  onFrame({
+    read: () => {
+      const vh = innerHeight;
+      return items.map((it) => {
+        if (it.state === "done") return "";
+        const r = it.el.getBoundingClientRect();
+        if (r.top < vh * 0.88 && r.bottom > 0) return "run";
+        if (r.top >= vh && r.top < vh * 1.35) return "zero";
+        return "final";
+      });
+    },
+    write: (next: string[]) => items.forEach((it, k) => {
+      const n = next[k];
+      if (!n || it.state === "done") return;
+      if (n === "run") { it.state = "done"; run(it.el); }
+      else if (n === "zero" && it.state !== "zero") { it.state = "zero"; show(it.el, 0); }
+      else if (n === "final" && it.state === "zero") { it.state = "final"; show(it.el, it.to); }
+    }),
   });
 }
 
@@ -301,28 +325,38 @@ export function initLines(root: ParentNode = document) {
   });
 }
 
-/* ---------- scroll-linked: image settle (zoom) and the hero frame that opens to full bleed ---------- */
+/* ---------- scroll-linked: image settle (zoom) and the hero frame that opens to full bleed ----------
+   Only transforms and clip-paths change, so nothing here can move the layout. */
 export function initScrub(root: ParentNode = document) {
   if (reduce()) return;
   const zooms = [...root.querySelectorAll<HTMLElement>("[data-zoom]")];
   const expands = [...root.querySelectorAll<HTMLElement>("[data-expand]")];
+  if (!zooms.length && !expands.length) return;
   const live = new Set<HTMLElement>();
-  const io = new IntersectionObserver((es) => es.forEach((e) => {
-    if (e.isIntersecting) live.add(e.target as HTMLElement); else live.delete(e.target as HTMLElement);
-  }), { rootMargin: "15% 0px" });
+  const last = new WeakMap<HTMLElement, string>();
+  const io = new IntersectionObserver((es) => {
+    es.forEach((e) => { if (e.isIntersecting) live.add(e.target as HTMLElement); else live.delete(e.target as HTMLElement); });
+    requestFrame();
+  }, { rootMargin: "15% 0px" });
   zooms.forEach((z) => io.observe(z));
-  onFrame(() => {
-    const vh = innerHeight;
-    live.forEach((el) => {
-      const r = el.getBoundingClientRect();
-      // 0 as the element enters from the bottom, 1 once its center reaches the middle of the screen
-      const p = clamp((vh - r.top) / (vh / 2 + r.height / 2));
-      const amt = parseFloat(el.dataset.zoom || "0.1");
-      el.style.setProperty("--zoom", (1 + amt * (1 - easeOut(p))).toFixed(4));
-    });
-    // the hero frame opens to full bleed over the first ~45% of a screen of scrolling
-    const e = easeOut(clamp(scrollY / (vh * 0.45))).toFixed(4);
-    expands.forEach((el) => el.style.setProperty("--e", e));
+  let lastE = "";
+  onFrame({
+    read: () => {
+      const vh = innerHeight;
+      const z: [HTMLElement, string][] = [];
+      live.forEach((el) => {
+        const r = el.getBoundingClientRect();
+        // 0 as the element enters from the bottom, 1 once its center reaches the middle of the screen
+        const p = clamp((vh - r.top) / (vh / 2 + r.height / 2));
+        z.push([el, (1 + parseFloat(el.dataset.zoom || "0.1") * (1 - easeOut(p))).toFixed(4)]);
+      });
+      // the hero frame opens to full bleed over the first ~45% of a screen of scrolling
+      return { z, e: expands.length ? easeOut(clamp(scrollY / (vh * 0.45))).toFixed(4) : "" };
+    },
+    write: ({ z, e }: { z: [HTMLElement, string][]; e: string }) => {
+      z.forEach(([el, v]) => { if (last.get(el) !== v) { last.set(el, v); el.style.setProperty("--zoom", v); } });
+      if (e && e !== lastE) { lastE = e; expands.forEach((el) => el.style.setProperty("--e", e)); }
+    },
   });
 }
 
@@ -332,17 +366,22 @@ export function initSteps(root: ParentNode = document) {
     const steps = [...box.querySelectorAll<HTMLElement>(".step")];
     const media = [...box.querySelectorAll<HTMLElement>(".steps-media img")];
     const bars = [...box.querySelectorAll<HTMLElement>(".ticks-bar span")];
+    let cur = -1;
     const set = (i: number) => {
+      if (i === cur) return;
+      cur = i;
       steps.forEach((s, k) => s.classList.toggle("on", k === i));
       media.forEach((m, k) => m.classList.toggle("on", k === i));
       bars.forEach((b, k) => b.classList.toggle("done", k <= i));
     };
-    set(0);
-    onFrame(() => {
-      const mid = innerHeight * 0.55;
-      let i = 0;
-      steps.forEach((s, k) => { if (s.getBoundingClientRect().top < mid) i = k; });
-      set(i);
+    onFrame({
+      read: () => {
+        const mid = innerHeight * 0.55;
+        let i = 0;
+        steps.forEach((s, k) => { if (s.getBoundingClientRect().top < mid) i = k; });
+        return i;
+      },
+      write: set,
     });
   });
 }
@@ -361,14 +400,18 @@ export function initInk(root: ParentNode = document) {
     words.forEach((w, i) => { vis.append(w); if (i < words.length - 1) vis.append(" "); });
     p.replaceChildren(sr, vis);
     let lit = -1;
-    onFrame(() => {
-      const r = p.getBoundingClientRect();
-      const vh = innerHeight;
-      const k = clamp((vh * 0.82 - r.top) / (r.height + vh * 0.3));
-      const n = Math.round(k * words.length);
-      if (n === lit) return;
-      lit = n;
-      words.forEach((w, i) => w.classList.toggle("on", i < n));
+    onFrame({
+      read: () => {
+        const r = p.getBoundingClientRect();
+        const vh = innerHeight;
+        return Math.round(clamp((vh * 0.82 - r.top) / (r.height + vh * 0.3)) * words.length);
+      },
+      write: (n: number) => {
+        if (n === lit) return;
+        const from = Math.min(n, Math.max(lit, 0)), to = Math.max(n, lit);
+        lit = n;
+        for (let i = from; i < to && i < words.length; i++) words[i].classList.toggle("on", i < n);
+      },
     });
   });
 }

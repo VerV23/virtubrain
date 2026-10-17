@@ -1,4 +1,5 @@
 import "../styles/base.css";
+import "../styles/components.css";
 import "../styles/pages.css";
 import { boot } from "../lib/site";
 import { initInner } from "../lib/ui";
@@ -48,7 +49,7 @@ if (form) {
     process: { h1a: "Tell us about the", h1b: "process you want to fix.", email: "Work email", msg: "What would you like to fix?",
       hint: "A sentence or two is enough. Name the process if you can.", s2b: "We pick one process", s2: "On the call we choose where to start and what to look at first." },
     assistant: { h1a: "Tell us the one job", h1b: "you'd hand over first.", email: "Email", msg: "What should the assistant handle first?",
-      hint: "A sentence or two is enough. For example, booking questions on your website.", s2b: "We pick the first job.", s2: "On the call we choose the one job your assistant starts with." },
+      hint: "A sentence or two is enough. For example, booking questions on your website.", s2b: "We pick the first job", s2: "On the call we choose the one job your assistant starts with." },
   };
   let mode: keyof typeof COPY = "process";
   const setMode = (next: keyof typeof COPY, animate = true) => {
@@ -64,6 +65,10 @@ if (form) {
     const s2 = $<HTMLElement>("step-2");
     s2.querySelector("b")!.textContent = c.s2b;
     s2.querySelector("span")!.textContent = c.s2;
+    // a business function means nothing on the assistant path: hide it, and keep it out of the message
+    const fnField = fFunction.closest<HTMLElement>(".field")!;
+    fnField.hidden = next === "assistant";
+    fFunction.disabled = next === "assistant";
     if (animate && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
       h1.classList.remove("swap"); void h1.offsetWidth; h1.classList.add("swap");
     }
@@ -213,7 +218,7 @@ if (form) {
       [mode === "assistant" ? "Email" : "Work email", fEmail.value.trim()],
       ["Company", fCompany.value.trim()],
       ["Interested in", fInterest.value],
-      ["Function", fFunction.value],
+      ["Function", fFunction.disabled ? "" : fFunction.value],
       ["Process", fProcess.value],
     ] as const).filter(([, v]) => v).map(([k, v]) => `${k}: ${v}`);
     const text = [...meta, "", fMessage.value.trim()].join("\n");
