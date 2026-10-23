@@ -51,7 +51,9 @@ export const Ill = () => <span class="ill">Illustrative</span>;
 export const painTitle = (p: PainPoint) => humanizeTitle(p.title, p.taskName);
 export function painImpact(p: PainPoint) {
   const kpis = taxIdx.value?.resolve(p.processId, p.functionId)?.proc.calibration.kpis || [];
-  return humanizeImpact(p.impact, kpis);
+  const s = humanizeImpact(p.impact, kpis);
+  // records on the standard steps sit at task level, so their impact speaks of the task
+  return wrapperOf(p.stepText) ? s.replace(/\bat this step\b/g, "in this task").replace(/\bthis (manual )?step\b/g, "this $1task").replace(/^This step\b/, "This task") : s;
 }
 /** Where a point sits: its exact step for core steps, task level for the standard steps. */
 export function painWhere(p: PainPoint): { wrapper: boolean; itself: boolean; text: string } {

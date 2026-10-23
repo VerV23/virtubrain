@@ -280,7 +280,7 @@ function StartHere() {
       ) : <p class="start-none">No core step in this process sorts to Auto on its wording, apart from steps a system already runs. Look at the Assist lane, where an AI agent drafts and a person approves.</p>}
       {(bare > 0 || systemRun.length > 0) && (
         <p class="start-note">
-          {bare > 0 && !failed && <>{bare === picks.length ? "None of these has" : `${bare} of these ${bare === 1 ? "has" : "have"}`} a failure point recorded; {bare === 1 && bare !== picks.length ? "it is" : "they are"} listed because the output can be checked against a record. </>}
+          {bare > 0 && !failed && <>{bare === picks.length ? "None of these has a" : `${bare} of these ${bare === 1 ? "has" : "have"} no`} failure point recorded; {bare === 1 && bare !== picks.length ? "it is" : "they are"} listed because the output can be checked against a record. </>}
           {systemRun.length > 0 && <>Not listed because the wording says a system already runs {systemRun.length === 1 ? "it" : "them"}: {systemRun.map((s, i) => <span key={s.sid}>{i ? ", " : ""}<span class="code">{s.sid}</span></span>)}.</>}
         </p>
       )}

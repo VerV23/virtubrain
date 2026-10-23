@@ -688,7 +688,7 @@ kbd { display: inline-grid; place-items: center; min-width: 20px; height: 20px; 
   .vb-page { --gut: 16px; }
   .tb { flex-wrap: wrap; height: auto; gap: 8px; padding: 8px 12px 10px; }
   .tabs { width: 100%; }
-  .tab { flex: 1; justify-content: center; padding: 0 8px; }
+  .tab { flex: 1; justify-content: center; padding: 0 8px; white-space: nowrap; }
   .tb-search { flex: 1 1 100%; max-width: none; height: 40px; }
   .tb-kbd { display: none; }
   .pick { width: 100%; left: -1px; max-height: 58vh; }
@@ -790,4 +790,9 @@ kbd { display: inline-grid; place-items: center; min-width: 20px; height: 20px; 
 @media (prefers-reduced-motion: reduce) {
   .vb *, .vb *::before, .vb *::after { animation-duration: 1ms !important; animation-iteration-count: 1 !important; transition-duration: 1ms !important; scroll-behavior: auto !important; }
   .skel span, .sk-line, .sk-box { animation: none; }
+}
+/* phones: the three view tabs keep one line each */
+@media (max-width: 479px) {
+  .tab { padding: 0 6px; }
+  .tab-g { display: none; }
 }
