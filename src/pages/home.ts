@@ -415,6 +415,29 @@ function galleryFocus() {
   });
 }
 
+/* ----------------------------------------------------------------------------------------------
+   Lanes film, final beat: choose a zone to dim the other lanes and open its steps in the real close
+   ---------------------------------------------------------------------------------------------- */
+function zonePick() {
+  const box = $("[data-zpick]"), sec = box?.closest<HTMLElement>(".lanes-film");
+  if (!box || !sec) return;
+  const hint = $("[data-zhint]", sec);
+  const btns = $$<HTMLButtonElement>(".zl-btn", box);
+  const set = (pick: HTMLButtonElement | null) => {
+    for (const b of btns) {
+      const on = b === pick;
+      b.setAttribute("aria-pressed", String(on));
+      const tray = document.getElementById(b.getAttribute("aria-controls") || "");
+      if (tray) tray.hidden = !on;
+    }
+    const z = pick?.closest("li")?.className.match(/z-(auto|assist|human)/)?.[1];
+    if (z) sec.dataset.zsel = z; else delete sec.dataset.zsel;
+    if (hint) hint.hidden = !!z;
+  };
+  for (const b of btns) b.addEventListener("click", () => set(b.getAttribute("aria-pressed") === "true" ? null : b));
+  sec.addEventListener("keydown", (e) => { if (e.key === "Escape" && sec.dataset.zsel) { const b = btns.find((x) => x.getAttribute("aria-pressed") === "true"); set(null); b?.focus(); } });
+}
+
 /* ---------------------------------------------------------------------------------------------- */
 heroFilm();
 monolithFilm();
@@ -431,4 +454,5 @@ opTile();
 calibrate();
 library();
 zoneMap();
+zonePick();
 galleryFocus();

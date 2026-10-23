@@ -241,6 +241,40 @@ write("gallery", functions.map((f) => {
         </a></li>`;
 }).join("\n        "));
 
+// lanes film, final beat: the three zone names are buttons; each opens the real steps of the month-end close
+// (8.1.1) that sort to that zone, with the check the zoning names. Core steps only, the wording-based call.
+{
+  const close = idx.resolve("8.1.1", "finance-accounting")!;
+  const by: Record<Zone, { sid: string; text: string; why: string; sys: boolean }[]> = { auto: [], assist: [], human: [] };
+  let core = 0;
+  for (const a of close.proc.activities) for (const t of a.tasks) t.steps.forEach((st, i) => {
+    if (isWrapper(st)) return;
+    core++;
+    const c = zoneOf(st, t.name);
+    by[c.zone].push({ sid: `${t.id}.${i + 1}`, text: humanizeStep(st, t.name).replace(/\.$/, ""), why: c.why, sys: c.rule === "system-run" });
+  });
+  const RULES: Record<Zone, [string, string]> = {
+    auto: ["Auto", "Output can be checked against a record. An agent runs it and the check is logged."],
+    assist: ["Assist", "Output needs judgment to confirm. An agent drafts and a person approves."],
+    human: ["Human", "Accountability can't be delegated. People decide and agents prepare."],
+  };
+  const zs: Zone[] = ["auto", "assist", "human"];
+  const xray = "/app/#view=xray&amp;fn=finance-accounting&amp;p=8.1.1";
+  write("lanes", `<ul class="zlegend" data-zpick>
+${zs.map((z) => `  <li class="z-${z}"><button type="button" class="zl-btn" aria-pressed="false" aria-controls="zpk-${z}"><span class="zl-name"><span class="dot"></span>${RULES[z][0]}</span><span class="zl-rule">${esc(RULES[z][1])}</span></button></li>`).join("\n")}
+</ul>
+<p class="zl-hint" data-zhint>Choose a zone to see its steps in a real month-end close.</p>
+${zs.map((z) => {
+    const list = [...by[z]].sort((a, b) => Number(a.sys) - Number(b.sys)).slice(0, 3).sort((a, b) => a.sid.localeCompare(b.sid, "en", { numeric: true }));
+    return `<div class="zpeek z-${z}" id="zpk-${z}" role="region" aria-label="${RULES[z][0]} steps in the month-end close" hidden>
+  <p class="zpeek-k"><span class="dot"></span><span><b>${by[z].length} of ${core}</b> core steps in the month-end close (8.1.1) sort to ${RULES[z][0]}</span><a class="zpeek-go" href="${xray}">X-ray the close</a></p>
+  <ol>
+${list.map((x) => `    <li><span class="code">${x.sid}</span><b>${esc(x.text)}</b><span>${esc(x.why)}</span></li>`).join("\n")}
+  </ol>
+</div>`;
+  }).join("\n")}`);
+}
+
 const size = JSON.stringify(summary).length;
 console.log(`process-index: ${processes.length} processes; summary: ${size} bytes; notes ${industryNotes}/${countryNotes}; home partials written`);
 if (size > 48_000) console.warn("summary.json is getting large; trim records per category");

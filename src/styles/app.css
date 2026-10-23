@@ -154,11 +154,11 @@ kbd { display: inline-grid; place-items: center; min-width: 20px; height: 20px; 
 .st-btn .ico { width: 14px; height: 14px; }
 
 /* first-run strip */
-.intro { display: flex; align-items: center; gap: 20px; padding: 10px var(--gut); background: color-mix(in srgb, var(--teal) 6%, var(--pane)); border-bottom: 1px solid var(--line); }
-.intro-list { flex: 1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px 28px; font-size: 0.8125rem; line-height: 1.45; color: var(--fg-2); }
+.intro { display: flex; align-items: center; gap: 20px; padding: 5px var(--gut); background: color-mix(in srgb, var(--teal) 6%, var(--pane)); border-bottom: 1px solid var(--line); }
+.intro-list { flex: 1; display: none; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px 28px; font-size: 0.8125rem; line-height: 1.45; color: var(--fg-2); }
 .intro-list b { display: block; font-weight: 650; color: var(--fg); }
 .intro-x { flex: none; }
-.intro-short { display: none; flex: 1; font-size: 0.8125rem; line-height: 1.45; color: var(--fg-2); }
+.intro-short { display: block; flex: 1; font-size: 0.8125rem; line-height: 1.45; color: var(--fg-2); }
 
 /* skeletons and states --------------------------------------------------------------------------- */
 .skel { display: grid; gap: 10px; padding: 16px; }
@@ -195,7 +195,7 @@ kbd { display: inline-grid; place-items: center; min-width: 20px; height: 20px; 
 .rail-item[aria-current="true"] .fn-ico { color: var(--teal); }
 .rail-item.is-dim { opacity: 0.42; }
 .rail-item.is-skel { pointer-events: none; }
-.rail-n { font-size: 0.6875rem; color: var(--fg-3); }
+.rail-n { font-size: 0.75rem; color: var(--fg-3); }
 .rail-item[aria-current="true"] .rail-n { color: var(--fg-2); }
 .rail-item:focus-visible { outline-offset: -2px; }
 
@@ -207,7 +207,7 @@ kbd { display: inline-grid; place-items: center; min-width: 20px; height: 20px; 
 .grp-h .fn-ico { align-self: center; color: var(--teal); }
 .grp-h .code { color: var(--fg-3); }
 .grp-name { min-width: 0; }
-.grp-n { margin-left: auto; font-size: 0.6875rem; color: var(--fg-3); }
+.grp-n { margin-left: auto; font-size: 0.75rem; color: var(--fg-3); }
 .opt { display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; gap: 8px; align-items: start; margin: 0 8px; padding: 8px 10px; border-radius: 9px; cursor: pointer;
   color: var(--fg-2); transition: background-color var(--dur-1); }
 .opt .code { padding-top: 2px; }
@@ -304,7 +304,7 @@ kbd { display: inline-grid; place-items: center; min-width: 20px; height: 20px; 
 .ill { display: inline-flex; align-items: center; height: 18px; padding: 0 7px; border-radius: 9px; border: 1px solid var(--line-2); font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.01em; color: var(--fg-2); white-space: nowrap; vertical-align: 1px; }
 .impact { margin-top: 4px; font-size: 0.8125rem; line-height: 1.55; color: var(--fg-2); text-wrap: pretty; }
 .impact-pre { font-weight: 600; color: var(--fg); }
-.std-tag { display: inline-flex; align-items: center; height: 18px; margin-left: 8px; padding: 0 7px; border-radius: 5px; background: rgba(232, 240, 235, 0.06); font-size: 0.6875rem; font-weight: 600; color: var(--fg-3); }
+.std-tag { display: inline-flex; align-items: center; height: 18px; margin-left: 8px; padding: 0 7px; border-radius: 5px; background: rgba(232, 240, 235, 0.06); font-size: 0.75rem; font-weight: 600; color: var(--fg-3); }
 .st-meta .std-tag, .card-top .std-tag { margin-left: 0; }
 .pain-fail { color: var(--fg-2); }
 .pain-fail .linkish { font-size: inherit; }
@@ -426,7 +426,7 @@ kbd { display: inline-grid; place-items: center; min-width: 20px; height: 20px; 
 .rl-item[aria-checked="true"] { background: var(--surface-2); color: var(--fg); box-shadow: inset 0 0 0 1px var(--line); }
 .rl-item[aria-checked="true"] .fn-ico, .rl-item[aria-checked="true"] .rl-n { color: var(--teal); }
 .rl-item.is-zero { opacity: 0.45; }
-.rl-n { font-size: 0.6875rem; color: var(--fg-3); }
+.rl-n { font-size: 0.75rem; color: var(--fg-3); }
 .about { margin: 30px 6px 0; padding-top: 18px; border-top: 1px solid var(--line); }
 .about-art { height: 112px; margin: 0 -6px 12px; overflow: hidden; border-radius: 12px; background: var(--void); }
 .about-art img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 58%; }

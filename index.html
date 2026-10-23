@@ -361,6 +361,12 @@
       <div class="film-frame lanes-frame">
         <img class="film-poster" src="/media/film/lanes/first.webp" loading="lazy" decoding="async" width="1276" height="720" alt="Scattered tiles drift into three ordered lanes lit teal, cobalt and rose.">
         <canvas class="film-canvas" aria-hidden="true"></canvas>
+        <svg class="zdim" viewBox="0 0 1276 720" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
+          <defs><filter id="zdim-soft" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="16"/></filter></defs>
+          <path class="zd zd-auto" fill-rule="evenodd" d="M-80-80H1356V800H-80Z M-80 360L1356 214V286L-80 436Z"/>
+          <path class="zd zd-assist" fill-rule="evenodd" d="M-80-80H1356V800H-80Z M-80 486L1356 296V376L-80 572Z"/>
+          <path class="zd zd-human" fill-rule="evenodd" d="M-80-80H1356V800H-80Z M-80 626L1356 386V474L-80 720Z"/>
+        </svg>
       </div>
       <div class="film-shade" aria-hidden="true"></div>
       <div class="film-overlay">
@@ -372,11 +378,7 @@
           <p class="fb-title fb-title-2">Against a record, with judgment, or by someone who must answer for&nbsp;it.</p>
         </div>
         <div class="beat fb fb-lanes" data-in="0.74" data-out="1">
-          <ul class="zlegend">
-            <li class="z-auto"><span class="zl-name"><span class="dot"></span>Auto</span><span class="zl-rule">Output can be checked against a record. An agent runs it and the check is logged.</span></li>
-            <li class="z-assist"><span class="zl-name"><span class="dot"></span>Assist</span><span class="zl-rule">Output needs judgment to confirm. An agent drafts and a person approves.</span></li>
-            <li class="z-human"><span class="zl-name"><span class="dot"></span>Human</span><span class="zl-rule">Accountability can't be delegated. People decide and agents prepare.</span></li>
-          </ul>
+          <!-- @include gen-home-lanes -->
         </div>
       </div>
     </div>

@@ -74,7 +74,7 @@ function Intro() {
         <li><b>Failure points</b> Browse 362 illustrative failure points, each tied to the task or step where it shows up.</li>
         <li><b>X-ray</b> Sort a process's steps by who should run them: an AI agent, an AI agent with a person approving, or people.</li>
       </ul>
-      <p class="intro-short">Explore 142 processes, browse 362 illustrative failure points, or X-ray a process to sort its steps by who should run them.</p>
+      <p class="intro-short"><b>New here?</b> Explore 142 processes, browse 362 illustrative failure points, or X-ray a process to sort its steps by who should run them.</p>
       <button type="button" class="b b-ghost b-sm intro-x" onClick={() => { introSeen.value = true; focusHeading(); }}>Got it</button>
     </aside>
   );
