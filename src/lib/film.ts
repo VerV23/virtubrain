@@ -35,8 +35,8 @@ type FrameSet = { imgs: (HTMLImageElement | undefined)[]; queued: Set<number> };
 class Film {
   el: HTMLElement; canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D; meta: FilmMeta;
   sets: Record<"d" | "m", FrameSet> = { d: { imgs: [], queued: new Set() }, m: { imgs: [], queued: new Set() } };
-  beats: { el: HTMLElement; a: number; b: number; f: number; vis: boolean; focusables: { el: HTMLElement; tab: string | null }[] }[] = [];
-  bar: HTMLElement | null; p = -1; drawn = -1; drawnSet = ""; set: "d" | "m"; phase = 0; inflight = 0; queue: number[] = [];
+  beats: { el: HTMLElement; a: number; b: number; f: number; vis: boolean; os: string; focusables: { el: HTMLElement; tab: string | null }[] }[] = [];
+  bar: HTMLElement | null; readers: HTMLElement[]; ps = ""; p = -1; drawn = -1; drawnSet = ""; set: "d" | "m"; phase = 0; inflight = 0; queue: number[] = [];
   fit: "cover" | "contain"; focusX: number; focusY: number; bg = "#000";
 
   constructor(el: HTMLElement) {
@@ -45,12 +45,13 @@ class Film {
     this.canvas = el.querySelector(".film-canvas")!;
     this.ctx = this.canvas.getContext("2d", { alpha: false })!;
     this.bar = el.querySelector(".film-progress i");
+    this.readers = [...el.querySelectorAll<HTMLElement>("[data-p]")];
     this.fit = (el.dataset.fit as "cover" | "contain") || "cover";
     this.focusX = parseFloat(el.dataset.focusX || "0.5");
     this.focusY = parseFloat(el.dataset.focusY || "0.5");
     this.set = this.wantSet();
     this.beats = [...el.querySelectorAll<HTMLElement>(".beat")].map((b) => ({
-      el: b, a: parseFloat(b.dataset.in || "0"), b: parseFloat(b.dataset.out || "1"), f: parseFloat(b.dataset.fade || "0.06"), vis: true,
+      el: b, a: parseFloat(b.dataset.in || "0"), b: parseFloat(b.dataset.out || "1"), f: parseFloat(b.dataset.fade || "0.06"), vis: true, os: "",
       focusables: [...b.querySelectorAll<HTMLElement>("a[href], button, input, select, textarea, [tabindex]")].map((el) => ({ el, tab: el.getAttribute("tabindex") })),
     }));
     this.readBg();
@@ -73,7 +74,9 @@ class Film {
       for (let i = 8; i < N - 1; i += 8) order.push(i);
       this.queue.push(...order.filter((i) => !fs.queued.has(i)));
       const idle = (window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => void }).requestIdleCallback;
-      const fast = !conn || (conn as { downlink?: number }).downlink === undefined || ((conn as { downlink?: number }).downlink ?? 0) >= 5;
+      // only a browser that reports a fast connection prefetches the whole film unprompted; Safari and Firefox report
+      // nothing, so they load the rest when the reader scrolls in (apply(), p > 0.002)
+      const fast = !!conn && !conn.saveData && ((conn as { downlink?: number }).downlink ?? 0) >= 5;
       if (fast) setTimeout(() => (idle ? idle(() => this.load(2), { timeout: 6000 }) : this.load(2)), 6000);
     } else {
       // everything else, nearest to where the reader is first
@@ -150,14 +153,21 @@ class Film {
     if (near && p > 0.002 && this.phase < 2 && !lowData) this.load(2);
     if (p === this.p) return;
     this.p = p;
-    this.el.style.setProperty("--p", p.toFixed(4));
-    if (this.bar) this.bar.style.setProperty("--p", p.toFixed(4));
+    // --p goes only to the elements that read it ([data-p] and the progress bar), never to the section, so a
+    // scrub frame restyles a few small subtrees instead of the whole film; unchanged values are not rewritten
+    const ps = p.toFixed(4);
+    if (ps !== this.ps) {
+      this.ps = ps;
+      for (const r of this.readers) r.style.setProperty("--p", ps);
+      if (this.bar) this.bar.style.setProperty("--p", ps);
+    }
     for (const b of this.beats) {
       // a beat that starts at 0 is already fully visible on arrival; one that ends at 1 stays visible at the end
       const fadeIn = b.a <= 0 ? 1 : (p - b.a) / b.f;
       const fadeOut = b.b >= 1 ? 1 : (b.b - p) / b.f;
       const o = p < b.a || p > b.b ? 0 : Math.max(0, Math.min(1, fadeIn, fadeOut));
-      b.el.style.setProperty("--o", o.toFixed(3));
+      const os = o.toFixed(3);
+      if (os !== b.os) { b.os = os; b.el.style.setProperty("--o", os); }
       // text stays in the accessibility tree at all times; only controls in a faded beat leave the tab order
       const vis = o >= 0.5;
       if (vis !== b.vis) {

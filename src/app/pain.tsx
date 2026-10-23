@@ -17,12 +17,14 @@ const hay = (p: PainPoint) => {
 type Facet = "fn" | "cat" | "sev";
 const SEV_RANK: Record<Severity, number> = { High: 0, Medium: 1, Low: 2 };
 const cmpId = (a: string, b: string) => a.localeCompare(b, "en", { numeric: true });
-const PAGE = 50;
-const limit = signal(PAGE);
+const FIRST = 4, PAGE = 30; // the first few paint with the view; the observer streams the rest in right after
+const limit = signal(FIRST);
 
+/* the library re-filters only when its own filters change, not on every route change (a view switch, a process) */
+const painKey = computed(() => { const r = route.value; return `${r.pf || ""}|${r.pc || ""}|${r.sev.join()}|${r.sort}|${r.pq}`; });
 const model = computed(() => {
   const pd = pain.value; if (pd.state !== "ready") return null;
-  const r = route.value; const all = pd.data.L.painPoints; const Q = compile(r.pq);
+  void painKey.value; const r = route.peek(); const all = pd.data.L.painPoints; const Q = compile(r.pq);
   const fnOrder = new Map<string, number>();
   const idx = taxIdx.value;
   if (idx) [...idx.fnById.keys()].forEach((k, i) => fnOrder.set(k, i));
@@ -136,7 +138,7 @@ function Results() {
   const n = m.rows.length; const nf = activeFilters();
   const sevN = SEVERITIES.map((s) => [s, m.rows.filter((p) => p.severity === s).length] as const);
   // a new filter set starts at the top of the list, 50 records at a time
-  useEffect(() => { limit.value = PAGE; const el = document.getElementById("pv-scroll"); if (el) el.scrollTop = 0; }, [r.pf, r.pc, r.sev.join(), r.sort, r.pq]);
+  useEffect(() => { limit.value = FIRST; const el = document.getElementById("pv-scroll"); if (el) el.scrollTop = 0; }, [r.pf, r.pc, r.sev.join(), r.sort, r.pq]);
   useEffect(() => {
     const el = sentinel.current; if (!el) return;
     const io = new IntersectionObserver(([e]) => { if (e.isIntersecting) limit.value += PAGE; }, { root: document.getElementById("pv-scroll"), rootMargin: "600px 0px" });

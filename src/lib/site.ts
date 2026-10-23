@@ -42,7 +42,8 @@ function initNav() {
   // The bar tucks away while reading down and returns on any upward scroll, and takes the colour of
   // the section beneath it (dark, light or navy) the way apple.com's bar does.
   let last = scrollY, skin = "";
-  const chrome = () => [nav, ...document.querySelectorAll(".lnav, [data-lnav]")];
+  let chromeEls: Element[] | null = null; // the bars to look past; static markup, so collected once
+  const chrome = () => (chromeEls ??= [nav, ...document.querySelectorAll(".lnav, [data-lnav]")]);
   onFrame({
     read: () => ({ y: scrollY, h: nav.offsetHeight, focus: nav.matches(":focus-within") }),
     write: ({ y, h, focus }: { y: number; h: number; focus: boolean }) => {

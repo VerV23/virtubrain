@@ -23,14 +23,14 @@
   <!-- 1. Hero film: the atlas rises from a closed stack into a lit tower -->
   <section class="film w-void hero" data-film="atlas" id="top" aria-labelledby="hero-title">
     <div class="film-stage">
-      <div class="film-frame hero-frame">
+      <div class="film-frame hero-frame" data-p>
         <img class="film-poster" src="/media/film/atlas/first.webp" width="1440" height="810" fetchpriority="high" decoding="async"
           alt="A closed stack of thirteen smoked-glass plates in a dark studio. As you scroll, the plates rise into a lit tower.">
         <canvas class="film-canvas" aria-hidden="true"></canvas>
       </div>
       <div class="film-shade" aria-hidden="true"></div>
       <div class="film-overlay">
-        <div class="beat hb hb-a" data-in="0" data-out="0.15" data-fade="0.07" style="--o:1">
+        <div class="beat hb hb-a" data-p data-in="0" data-out="0.15" data-fade="0.07" style="--o:1">
           <p class="eyebrow hb-eyebrow">Process map and advisory for finance and shared services</p>
           <h1 class="hb-title" id="hero-title">Find the step where your operating model breaks.</h1>
           <p class="hb-lede">VirtuBrain breaks 142 processes into activities, tasks and steps, with notes for your industry and country.</p>
@@ -76,8 +76,8 @@
       </div>
 
       <div class="hero-foot" aria-hidden="true">
-        <p class="hero-cue"><span>Scroll</span><i></i></p>
-        <div class="hero-prog">
+        <p class="hero-cue" data-p><span>Scroll</span><i></i></p>
+        <div class="hero-prog" data-p>
           <span class="hero-prog-label mono" data-prog-label>01 &nbsp;The step</span>
           <span class="hero-segs"><i data-a="0" data-b="0.17"></i><i data-a="0.17" data-b="0.48"></i><i data-a="0.48" data-b="0.78"></i><i data-a="0.78" data-b="1"></i></span>
         </div>
@@ -358,7 +358,7 @@
   <!-- 5. Three zones: lanes film -->
   <section class="film w-teal lanes-film" data-film="lanes" id="zones" aria-labelledby="zones-title">
     <div class="film-stage">
-      <div class="film-frame lanes-frame">
+      <div class="film-frame lanes-frame" data-p>
         <img class="film-poster" src="/media/film/lanes/first.webp" loading="lazy" decoding="async" width="1276" height="720" alt="Scattered tiles drift into three ordered lanes lit teal, cobalt and rose.">
         <canvas class="film-canvas" aria-hidden="true"></canvas>
         <svg class="zdim" viewBox="0 0 1276 720" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
@@ -368,7 +368,7 @@
           <path class="zd zd-human" fill-rule="evenodd" d="M-80-80H1356V800H-80Z M-80 626L1356 386V474L-80 720Z"/>
         </svg>
       </div>
-      <div class="film-shade" aria-hidden="true"></div>
+      <div class="film-shade" data-p aria-hidden="true"></div>
       <div class="film-overlay">
         <div class="beat fb" data-in="0" data-out="0.42">
           <p class="eyebrow fb-k">Three zones</p>

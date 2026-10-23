@@ -48,8 +48,14 @@ export function Hl({ text, hl }: { text: string; hl: string[] }) {
 
 /* ---- pain-point wording, shared by every view ------------------------------------------------------ */
 export const Ill = () => <span class="ill">Illustrative</span>;
-export const painTitle = (p: PainPoint) => humanizeTitle(p.title, p.taskName);
+/* the wording helpers run a dozen regexes per record; each record is rewritten once and cached */
+const titleMemo = new WeakMap<PainPoint, string>(), impactMemo = new WeakMap<PainPoint, string>();
+export const painTitle = (p: PainPoint) => { let t = titleMemo.get(p); if (t === undefined) { t = humanizeTitle(p.title, p.taskName); titleMemo.set(p, t); } return t; };
 export function painImpact(p: PainPoint) {
+  const hit = impactMemo.get(p); if (hit !== undefined) return hit;
+  const s = impactText(p); if (taxIdx.peek()) impactMemo.set(p, s); return s; // KPI wording needs the taxonomy
+}
+function impactText(p: PainPoint) {
   const kpis = taxIdx.value?.resolve(p.processId, p.functionId)?.proc.calibration.kpis || [];
   const s = humanizeImpact(p.impact, kpis);
   // records on the standard steps sit at task level, so their impact speaks of the task
