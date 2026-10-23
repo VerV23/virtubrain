@@ -25,6 +25,7 @@
   --brass-2: #e0c27f;
 
   /* signal colours: these carry meaning everywhere -------------------------- */
+  --mask-on: #000;         /* opaque stop in mask-image gradients (alpha only, never painted) */
   --teal: #5ec4b0;         /* instrument accent, and the AUTO zone */
   --cobalt: #9aaef0;       /* ASSIST zone */
   --rose: #efa0b3;         /* HUMAN zone */

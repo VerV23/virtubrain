@@ -176,7 +176,7 @@ kbd { display: inline-grid; place-items: center; min-width: 20px; height: 20px; 
 @keyframes shimmer { from { background-position: 120% 0; } to { background-position: -120% 0; } }
 .state { display: grid; justify-items: center; text-align: center; max-width: 400px; margin: 40px auto; padding: 0 20px; }
 .state-art { width: 168px; aspect-ratio: 4 / 5; margin-bottom: 8px; }
-.state-art img { width: 100%; height: 100%; object-fit: cover; -webkit-mask-image: radial-gradient(ellipse 52% 50% at 50% 50%, #000 52%, transparent 100%); mask-image: radial-gradient(ellipse 52% 50% at 50% 50%, #000 52%, transparent 100%); }
+.state-art img { width: 100%; height: 100%; object-fit: cover; -webkit-mask-image: radial-gradient(ellipse 52% 50% at 50% 50%, var(--mask-on) 52%, transparent 100%); mask-image: radial-gradient(ellipse 52% 50% at 50% 50%, var(--mask-on) 52%, transparent 100%); }
 .state-title { font-size: 1.125rem; font-weight: 650; letter-spacing: -0.012em; color: var(--fg); text-wrap: balance; }
 .state-text { margin-top: 8px; font-size: 0.875rem; color: var(--fg-2); text-wrap: pretty; }
 .state-actions { margin-top: 18px; }
@@ -528,7 +528,7 @@ kbd { display: inline-grid; place-items: center; min-width: 20px; height: 20px; 
 .caveat { display: flex; align-items: flex-start; gap: 12px; flex: 1 1 360px; max-width: 64ch; font-size: 0.9375rem; line-height: 1.5; font-weight: 550; color: var(--fg); text-wrap: pretty; }
 .caveat-mark { flex: none; width: 16px; height: 16px; margin-top: 2px; background: linear-gradient(90deg, var(--teal) 0 28%, transparent 28% 36%, var(--cobalt) 36% 64%, transparent 64% 72%, var(--rose) 72%); border-radius: 2px; }
 .xr-art { margin: 0; align-self: stretch; display: grid; place-items: center; }
-.xr-art img { width: 150px; height: 188px; object-fit: cover; -webkit-mask-image: radial-gradient(ellipse 50% 50% at 50% 48%, #000 55%, transparent 100%); mask-image: radial-gradient(ellipse 50% 50% at 50% 48%, #000 55%, transparent 100%); }
+.xr-art img { width: 150px; height: 188px; object-fit: cover; -webkit-mask-image: radial-gradient(ellipse 50% 50% at 50% 48%, var(--mask-on) 55%, transparent 100%); mask-image: radial-gradient(ellipse 50% 50% at 50% 48%, var(--mask-on) 55%, transparent 100%); }
 
 .xr-sum { margin-top: 18px; padding: 20px 22px 18px; border-radius: 18px; background: var(--surface); border: 1px solid var(--line); }
 .sum-top { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 14px 24px; }

@@ -54,15 +54,15 @@ html:has(body.home) { --lnav-h: 48px; }
   --drop: 24vh;
   --lift: clamp(0, calc((var(--p, 0) - 0.02) * 6.5), 1);
   transform: translate3d(0, calc((1 - var(--lift)) * var(--drop)), 0);
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 8%);
-  mask-image: linear-gradient(to bottom, transparent 0, #000 8%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, var(--mask-on) 8%);
+  mask-image: linear-gradient(to bottom, transparent 0, var(--mask-on) 8%);
 }
 @media (min-height: 820px) and (min-width: 1024px) { .home .hero-frame { --drop: 21.5vh; } }
 /* short laptop screens: a smaller, feathered stage so the stack clears the headline */
 @media (max-height: 800px) and (min-width: 1024px) {
   .home .hero-frame { inset: 9vh 7vw 0; --drop: 20vh;
-    -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 9%), linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
-    mask-image: linear-gradient(to bottom, transparent 0, #000 9%), linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0, var(--mask-on) 9%), linear-gradient(90deg, transparent, var(--mask-on) 12%, var(--mask-on) 88%, transparent);
+    mask-image: linear-gradient(to bottom, transparent 0, var(--mask-on) 9%), linear-gradient(90deg, transparent, var(--mask-on) 12%, var(--mask-on) 88%, transparent);
     -webkit-mask-composite: source-in; mask-composite: intersect; }
 }
 @media (max-height: 680px) and (min-width: 1024px) { .home .hero-frame { inset: 14vh 14vw 0; --drop: 22vh; } }
@@ -189,7 +189,7 @@ html:has(body.home) { --lnav-h: 48px; }
 .bt-of { margin-left: 8px; color: var(--fg-3); letter-spacing: 0.06em; }
 
 .bt-lv { grid-area: lv; }
-.bt-lv .bt-media { left: 46%; -webkit-mask-image: linear-gradient(90deg, transparent, #000 34%); mask-image: linear-gradient(90deg, transparent, #000 34%); }
+.bt-lv .bt-media { left: 46%; -webkit-mask-image: linear-gradient(90deg, transparent, var(--mask-on) 34%); mask-image: linear-gradient(90deg, transparent, var(--mask-on) 34%); }
 .bt-lv .bt-media img { object-position: 40% 50%; }
 .bt-lv .bt-body { height: 100%; grid-template-rows: auto auto 1fr auto; max-width: 62%; }
 .lv-list { align-self: end; display: grid; margin-top: 18px; }
@@ -202,15 +202,15 @@ html:has(body.home) { --lnav-h: 48px; }
 .bt-in, .bt-co { justify-content: flex-end; }
 .bt-in { grid-area: in; }
 .bt-co { grid-area: co; }
-.bt-in .bt-media { left: 30%; -webkit-mask-image: linear-gradient(90deg, transparent, #000 30%); mask-image: linear-gradient(90deg, transparent, #000 30%); }
+.bt-in .bt-media { left: 30%; -webkit-mask-image: linear-gradient(90deg, transparent, var(--mask-on) 30%); mask-image: linear-gradient(90deg, transparent, var(--mask-on) 30%); }
 .bt-in .bt-media img { object-position: 74% 50%; }
-.bt-co .bt-media { left: 26%; -webkit-mask-image: linear-gradient(90deg, transparent, #000 30%); mask-image: linear-gradient(90deg, transparent, #000 30%); }
+.bt-co .bt-media { left: 26%; -webkit-mask-image: linear-gradient(90deg, transparent, var(--mask-on) 30%); mask-image: linear-gradient(90deg, transparent, var(--mask-on) 30%); }
 .bt-co .bt-media img { object-position: 70% 55%; transform: scale(1.06); }
 .bt-in .bt-body, .bt-co .bt-body { max-width: 56%; }
 
 /* the monolith tile: the film's own frames play forward on a small canvas when pressed */
 .bt-op { grid-area: op; background: var(--bg); box-shadow: none; }
-.op-media { top: 34%; -webkit-mask-image: linear-gradient(to bottom, transparent, #000 18%); mask-image: linear-gradient(to bottom, transparent, #000 18%); }
+.op-media { top: 34%; -webkit-mask-image: linear-gradient(to bottom, transparent, var(--mask-on) 18%); mask-image: linear-gradient(to bottom, transparent, var(--mask-on) 18%); }
 .op-poster, .op-canvas { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .op-canvas { opacity: 0; transition: opacity 300ms; }
 .bt-op.is-live .op-canvas { opacity: 1; }
@@ -225,7 +225,7 @@ html:has(body.home) { --lnav-h: 48px; }
 @keyframes op-wait { to { opacity: 0.45; } }
 
 .bt-an { grid-area: an; }
-.bt-an .bt-media { top: 44%; -webkit-mask-image: linear-gradient(to bottom, transparent, #000 34%); mask-image: linear-gradient(to bottom, transparent, #000 34%); }
+.bt-an .bt-media { top: 44%; -webkit-mask-image: linear-gradient(to bottom, transparent, var(--mask-on) 34%); mask-image: linear-gradient(to bottom, transparent, var(--mask-on) 34%); }
 .bt-an .bt-media img { transform: scale(1.06); object-position: 50% 62%; }
 .bt-an .bt-body { max-width: 40rem; }
 .spec { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
@@ -233,7 +233,7 @@ html:has(body.home) { --lnav-h: 48px; }
   background: color-mix(in srgb, var(--surface-2) 80%, transparent); box-shadow: inset 0 0 0 1px var(--line); }
 
 .bt-pf { grid-area: pf; flex-direction: row; align-items: stretch; }
-.bt-pf .bt-media { left: 30%; -webkit-mask-image: linear-gradient(90deg, transparent, #000 26%); mask-image: linear-gradient(90deg, transparent, #000 26%); }
+.bt-pf .bt-media { left: 30%; -webkit-mask-image: linear-gradient(90deg, transparent, var(--mask-on) 26%); mask-image: linear-gradient(90deg, transparent, var(--mask-on) 26%); }
 .bt-pf .bt-media img { object-position: 50% 40%; }
 .bt-pf .bt-body { width: min(48%, 27rem); align-content: center; gap: 14px; }
 .bt-pf .eyebrow { display: flex; align-items: center; gap: 10px; }
@@ -243,7 +243,7 @@ html:has(body.home) { --lnav-h: 48px; }
 .sevkey > span, .zkey > span { display: inline-flex; align-items: center; gap: 7px; }
 
 .bt-ap { grid-area: ap; }
-.bt-ap .bt-media { top: 38%; -webkit-mask-image: linear-gradient(to bottom, transparent, #000 28%); mask-image: linear-gradient(to bottom, transparent, #000 28%); }
+.bt-ap .bt-media { top: 38%; -webkit-mask-image: linear-gradient(to bottom, transparent, var(--mask-on) 28%); mask-image: linear-gradient(to bottom, transparent, var(--mask-on) 28%); }
 .bt-ap .bt-media img { object-position: 50% 42%; }
 .bt-ap .cta-row { margin-top: 8px; }
 
@@ -251,7 +251,7 @@ html:has(body.home) { --lnav-h: 48px; }
 .bt-zn { grid-area: zn; }
 /* the image sits in its own band above the copy, so the copy never runs over the engraving */
 .bt-fl .bt-media { position: relative; inset: auto; flex: 1 1 auto; min-height: 120px; max-height: 220px; z-index: 0;
-  -webkit-mask-image: linear-gradient(to top, transparent, #000 45%); mask-image: linear-gradient(to top, transparent, #000 45%); }
+  -webkit-mask-image: linear-gradient(to top, transparent, var(--mask-on) 45%); mask-image: linear-gradient(to top, transparent, var(--mask-on) 45%); }
 /* atlas-diptych is two frames stacked; show only its lower macro (the engraved route in red) */
 .bt-fl .bt-media img { height: 200%; object-position: 50% 100%; transform: translateY(-50%); }
 .bt-fl .bt-body { margin-top: -20px; padding-top: 0; }
@@ -260,7 +260,7 @@ html:has(body.home) { --lnav-h: 48px; }
 .bt-flags li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; }
 .bt-flags li > span { flex-basis: 100%; font: 500 0.6875rem/1.3 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--fg-3); }
 .bt-flags b { font-weight: 500; font-size: 0.8125rem; color: var(--teal); }
-.bt-zn .bt-media { top: 42%; -webkit-mask-image: linear-gradient(to bottom, transparent, #000 30%); mask-image: linear-gradient(to bottom, transparent, #000 30%); }
+.bt-zn .bt-media { top: 42%; -webkit-mask-image: linear-gradient(to bottom, transparent, var(--mask-on) 30%); mask-image: linear-gradient(to bottom, transparent, var(--mask-on) 30%); }
 .bt-zn .bt-media img { object-position: 50% 62%; }
 .zkey { display: flex; gap: 16px; font-size: 0.8125rem; color: var(--fg-2); }
 .bt-zn .link-more { margin-top: 4px; }
@@ -280,12 +280,12 @@ html:has(body.home) { --lnav-h: 48px; }
 @media (max-width: 680px) {
   .bento { grid-template-columns: minmax(0, 1fr); grid-template-areas: "lv" "in" "co" "op" "an" "pf" "fl" "zn" "ap"; }
   .bt-lv { min-height: 0; }
-  .bt-lv .bt-media { position: relative; inset: auto; height: 250px; order: -1; -webkit-mask-image: linear-gradient(to top, transparent, #000 40%); mask-image: linear-gradient(to top, transparent, #000 40%); }
+  .bt-lv .bt-media { position: relative; inset: auto; height: 250px; order: -1; -webkit-mask-image: linear-gradient(to top, transparent, var(--mask-on) 40%); mask-image: linear-gradient(to top, transparent, var(--mask-on) 40%); }
   .bt-lv .bt-media img { object-position: 50% 45%; }
   .bt-lv .bt-body { max-width: none; margin-top: -48px; height: auto; grid-template-rows: none; }
   .lv-list { margin-top: 8px; }
   .bt-in, .bt-co { min-height: 0; justify-content: flex-start; }
-  .bt-in .bt-media, .bt-co .bt-media { position: relative; inset: auto; height: 200px; order: -1; -webkit-mask-image: linear-gradient(to top, transparent, #000 36%); mask-image: linear-gradient(to top, transparent, #000 36%); }
+  .bt-in .bt-media, .bt-co .bt-media { position: relative; inset: auto; height: 200px; order: -1; -webkit-mask-image: linear-gradient(to top, transparent, var(--mask-on) 36%); mask-image: linear-gradient(to top, transparent, var(--mask-on) 36%); }
   .bt-in .bt-media img { object-position: 76% 50%; }
   .bt-co .bt-media img { object-position: 50% 50%; transform: none; }
   .bt-in .bt-body, .bt-co .bt-body { max-width: none; margin-top: -28px; }
@@ -294,7 +294,7 @@ html:has(body.home) { --lnav-h: 48px; }
   .bt-an { min-height: 500px; }
   .bt-an .bt-media { top: 60%; }
   .bt-pf { flex-direction: column; min-height: 0; }
-  .bt-pf .bt-media { position: relative; inset: auto; height: 300px; order: -1; -webkit-mask-image: linear-gradient(to top, transparent, #000 30%); mask-image: linear-gradient(to top, transparent, #000 30%); }
+  .bt-pf .bt-media { position: relative; inset: auto; height: 300px; order: -1; -webkit-mask-image: linear-gradient(to top, transparent, var(--mask-on) 30%); mask-image: linear-gradient(to top, transparent, var(--mask-on) 30%); }
   .bt-pf .bt-media img { object-position: 50% 40%; transform: scale(1.4); transform-origin: 50% 40%; }
   .bt-pf .bt-body { width: auto; margin-top: -40px; }
   .bt-fl, .bt-zn { min-height: 500px; }
@@ -306,7 +306,7 @@ html:has(body.home) { --lnav-h: 48px; }
    ============================================================================================= */
 .interlude { position: relative; overflow: hidden; isolation: isolate; display: grid; grid-template-rows: 1.15fr 1fr; min-height: clamp(540px, 48vw, 700px);
   background: linear-gradient(to bottom, var(--void) 70%, var(--ink)); }
-.il-media { position: absolute; inset: 0; z-index: -1; -webkit-mask-image: linear-gradient(to bottom, transparent, #000 24%, #000 76%, transparent); mask-image: linear-gradient(to bottom, transparent, #000 24%, #000 76%, transparent); }
+.il-media { position: absolute; inset: 0; z-index: -1; -webkit-mask-image: linear-gradient(to bottom, transparent, var(--mask-on) 24%, var(--mask-on) 76%, transparent); mask-image: linear-gradient(to bottom, transparent, var(--mask-on) 24%, var(--mask-on) 76%, transparent); }
 .il-media img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 50%; transform: scaleX(-1); }
 .il-top { grid-row: 1; align-self: end; padding-bottom: clamp(32px, 4vw, 60px); }
 .il-bottom { grid-row: 2; align-self: start; padding-top: clamp(28px, 3.4vw, 52px); }
@@ -331,7 +331,7 @@ html:has(body.home) { --lnav-h: 48px; }
 .console-ctl { position: relative; isolation: isolate; border-right: 1px solid var(--line); min-height: 100%; }
 /* the dial sits quietly below the controls and fades into the panel */
 .console-bg { position: absolute; inset: auto 0 0 0; height: 42%; width: 100%; object-fit: cover; object-position: 62% 62%; z-index: -1; opacity: 0.45;
-  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 60%); mask-image: linear-gradient(to bottom, transparent, #000 60%); }
+  -webkit-mask-image: linear-gradient(to bottom, transparent, var(--mask-on) 60%); mask-image: linear-gradient(to bottom, transparent, var(--mask-on) 60%); }
 .console-ctl-in { padding: var(--pad-tile); display: grid; gap: 28px; }
 .seg-list { display: grid; gap: 8px; }
 .seg-btn { display: grid; gap: 2px; text-align: left; padding: 11px 16px; min-height: 52px; border-radius: 14px; border: 1px solid var(--line-2);
@@ -366,7 +366,7 @@ html:has(body.home) { --lnav-h: 48px; }
 @media (max-width: 1023px) {
   .console { grid-template-columns: 1fr; }
   .console-ctl { border-right: 0; border-bottom: 1px solid var(--line); }
-  .console-bg { height: 100%; inset: 0; opacity: 0.22; object-position: 85% 50%; -webkit-mask-image: linear-gradient(90deg, transparent 35%, #000); mask-image: linear-gradient(90deg, transparent 35%, #000); }
+  .console-bg { height: 100%; inset: 0; opacity: 0.22; object-position: 85% 50%; -webkit-mask-image: linear-gradient(90deg, transparent 35%, var(--mask-on)); mask-image: linear-gradient(90deg, transparent 35%, var(--mask-on)); }
   .seg-list { grid-template-columns: 1fr 1fr; }
 }
 @media (max-width: 680px) {
@@ -384,13 +384,13 @@ html:has(body.home) { --lnav-h: 48px; }
 /* the scene is drawn at no more than ~1.06x its 1276px source: on tall or wide screens the box stops growing and
    feathers into the fog (the film's studio backdrop is flat, so the join is invisible) */
 .home .mono-frame { inset: 13% 0 3% 31%; max-height: 760px; max-width: 1360px; margin: auto;
-  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 24%), linear-gradient(to bottom, transparent 0, #000 12%, #000 86%, transparent);
-  mask-image: linear-gradient(90deg, transparent 0, #000 24%), linear-gradient(to bottom, transparent 0, #000 12%, #000 86%, transparent);
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, var(--mask-on) 24%), linear-gradient(to bottom, transparent 0, var(--mask-on) 12%, var(--mask-on) 86%, transparent);
+  mask-image: linear-gradient(90deg, transparent 0, var(--mask-on) 24%), linear-gradient(to bottom, transparent 0, var(--mask-on) 12%, var(--mask-on) 86%, transparent);
   -webkit-mask-composite: source-in; mask-composite: intersect; }
 @media (min-width: 1600px) {
   .home .mono-frame {
-    -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 24%, #000 calc(100% - 120px), transparent), linear-gradient(to bottom, transparent 0, #000 120px, #000 calc(100% - 120px), transparent);
-    mask-image: linear-gradient(90deg, transparent 0, #000 24%, #000 calc(100% - 120px), transparent), linear-gradient(to bottom, transparent 0, #000 120px, #000 calc(100% - 120px), transparent); }
+    -webkit-mask-image: linear-gradient(90deg, transparent 0, var(--mask-on) 24%, var(--mask-on) calc(100% - 120px), transparent), linear-gradient(to bottom, transparent 0, var(--mask-on) 120px, var(--mask-on) calc(100% - 120px), transparent);
+    mask-image: linear-gradient(90deg, transparent 0, var(--mask-on) 24%, var(--mask-on) calc(100% - 120px), transparent), linear-gradient(to bottom, transparent 0, var(--mask-on) 120px, var(--mask-on) calc(100% - 120px), transparent); }
 }
 /* a soft fog scrim keeps the copy column clean over any frame */
 .mono-film .film-shade { background:
@@ -481,8 +481,8 @@ html:has(body.home) { --lnav-h: 48px; }
   inset: auto; left: 50%; top: 50%; width: var(--lw); height: var(--lh);
   /* once the lanes have formed, the camera pulls back and left so each zone can be named at its lane's end */
   transform: translate(calc(-50% - var(--ln) * 15vw), -50%) scale(calc(1 - var(--ln) * 0.16));
-  -webkit-mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent), linear-gradient(to bottom, transparent, #000 9%, #000 91%, transparent);
-  mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent), linear-gradient(to bottom, transparent, #000 9%, #000 91%, transparent);
+  -webkit-mask-image: linear-gradient(90deg, transparent, var(--mask-on) 7%, var(--mask-on) 93%, transparent), linear-gradient(to bottom, transparent, var(--mask-on) 9%, var(--mask-on) 91%, transparent);
+  mask-image: linear-gradient(90deg, transparent, var(--mask-on) 7%, var(--mask-on) 93%, transparent), linear-gradient(to bottom, transparent, var(--mask-on) 9%, var(--mask-on) 91%, transparent);
   -webkit-mask-composite: source-in; mask-composite: intersect; }
 .lanes-film .film-shade { background: linear-gradient(to bottom, var(--bg) 0, color-mix(in srgb, var(--bg) 70%, transparent) 14%, color-mix(in srgb, var(--bg) 0%, transparent) 40%),
   linear-gradient(to top, var(--bg) 0, transparent 14%); }
@@ -506,8 +506,8 @@ html:has(body.home) { --lnav-h: 48px; }
 .zl-rule { color: var(--fg-2); font-size: 0.875rem; line-height: 1.45; text-shadow: 0 1px 14px var(--bg), 0 0 2px var(--bg); }
 @media (min-width: 1500px) {
   .home .lanes-frame {
-    -webkit-mask-image: linear-gradient(90deg, transparent, #000 120px, #000 calc(100% - 220px), transparent), linear-gradient(to bottom, transparent, #000 14%, #000 86%, transparent);
-    mask-image: linear-gradient(90deg, transparent, #000 120px, #000 calc(100% - 220px), transparent), linear-gradient(to bottom, transparent, #000 14%, #000 86%, transparent); }
+    -webkit-mask-image: linear-gradient(90deg, transparent, var(--mask-on) 120px, var(--mask-on) calc(100% - 220px), transparent), linear-gradient(to bottom, transparent, var(--mask-on) 14%, var(--mask-on) 86%, transparent);
+    mask-image: linear-gradient(90deg, transparent, var(--mask-on) 120px, var(--mask-on) calc(100% - 220px), transparent), linear-gradient(to bottom, transparent, var(--mask-on) 14%, var(--mask-on) 86%, transparent); }
 }
 /* 1280 to 1439: a little less room past the lane ends, so the rules set smaller and run to the edge in two lines */
 @media (min-width: 1280px) and (max-width: 1439px) {
@@ -661,7 +661,7 @@ html:has(body.home) { --lnav-h: 48px; }
 .close { position: relative; overflow: hidden; isolation: isolate; display: flex; flex-direction: column; }
 .close-in { position: relative; z-index: 1; display: grid; justify-items: center; align-content: start; text-align: center; gap: 18px; padding-top: clamp(96px, 12vw, 180px); }
 .close-media { position: relative; height: clamp(300px, 46vw, 640px); margin-top: clamp(-120px, -6vw, -40px); overflow: hidden;
-  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 34%, #000 78%, transparent); mask-image: linear-gradient(to bottom, transparent, #000 34%, #000 78%, transparent); }
+  -webkit-mask-image: linear-gradient(to bottom, transparent, var(--mask-on) 34%, var(--mask-on) 78%, transparent); mask-image: linear-gradient(to bottom, transparent, var(--mask-on) 34%, var(--mask-on) 78%, transparent); }
 .close-media img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 52%; }
 .close-title { font-size: var(--t-display); line-height: 1.02; letter-spacing: -0.04em; font-weight: 700; max-width: 12em; text-wrap: balance; }
 .close-sub { font-size: var(--t-h2); line-height: 1.15; letter-spacing: -0.022em; font-weight: 600; color: var(--fg-2); max-width: 30ch; text-wrap: balance; }
@@ -675,7 +675,7 @@ html:has(body.home) { --lnav-h: 48px; }
    ============================================================================================= */
 @media (max-width: 1023px) {
   .hero { --film-h: 380vh; }
-  .home .hero-frame { --drop: 6svh; --lift: clamp(0, calc((var(--p, 0) - 0.11) * 6.5), 1); inset: 36% 0 2%; -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 22%, #000 86%, transparent); mask-image: linear-gradient(to bottom, transparent 0, #000 22%, #000 86%, transparent); }
+  .home .hero-frame { --drop: 6svh; --lift: clamp(0, calc((var(--p, 0) - 0.11) * 6.5), 1); inset: 36% 0 2%; -webkit-mask-image: linear-gradient(to bottom, transparent 0, var(--mask-on) 22%, var(--mask-on) 86%, transparent); mask-image: linear-gradient(to bottom, transparent 0, var(--mask-on) 22%, var(--mask-on) 86%, transparent); }
   /* the headline leaves more gently, so it never slides under the fixed header */
   .home .hb-a { justify-self: stretch; text-align: left; justify-items: start; padding-top: calc(var(--nav-h) + 26px); transform: translate3d(0, calc(var(--p, 0) * -18vh), 0); }
   .hb-ctas { justify-content: flex-start; }
@@ -704,7 +704,7 @@ html:has(body.home) { --lnav-h: 48px; }
 
   .mono-film { --film-h: 340vh; }
   .home .mono-frame { inset: 33% 0 22%; -webkit-mask-composite: source-over; mask-composite: add;
-    -webkit-mask-image: linear-gradient(to bottom, transparent, #000 14%, #000 86%, transparent); mask-image: linear-gradient(to bottom, transparent, #000 14%, #000 86%, transparent); }
+    -webkit-mask-image: linear-gradient(to bottom, transparent, var(--mask-on) 14%, var(--mask-on) 86%, transparent); mask-image: linear-gradient(to bottom, transparent, var(--mask-on) 14%, var(--mask-on) 86%, transparent); }
   .mono-film .film-shade { background: linear-gradient(to bottom, var(--bg) 0, transparent 10%); }
   .fb { width: 100%; gap: 10px; }
   .fb-title { font-size: clamp(1.875rem, 1.2rem + 3.4vw, 2.5rem); }
@@ -741,7 +741,7 @@ html:has(body.home) { --lnav-h: 48px; }
 @media (prefers-reduced-motion: reduce) {
   .home .film-stage { display: flex; flex-direction: column; min-height: 0; padding-top: calc(var(--nav-h) + 16px); }
   .home .film-frame { position: relative; inset: auto; left: auto; top: auto; order: 0; transform: none !important; aspect-ratio: 16 / 9; width: 100%; height: auto; max-height: 64svh;
-    -webkit-mask-image: linear-gradient(to bottom, transparent, #000 12%, #000 88%, transparent); mask-image: linear-gradient(to bottom, transparent, #000 12%, #000 88%, transparent); }
+    -webkit-mask-image: linear-gradient(to bottom, transparent, var(--mask-on) 12%, var(--mask-on) 88%, transparent); mask-image: linear-gradient(to bottom, transparent, var(--mask-on) 12%, var(--mask-on) 88%, transparent); }
   .home .film-shade, .hero-foot { display: none; }
   .home .film-overlay { display: grid; gap: clamp(48px, 8vw, 96px); padding-block: 24px 64px; }
   .home .beat { transform: none !important; padding-top: 0 !important; padding-bottom: 0; position: static; width: auto; height: auto; }
