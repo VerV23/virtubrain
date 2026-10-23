@@ -246,3 +246,9 @@ Shared wording (use exactly, everywhere including the app):
   for every step".
 - Body copy says "failure points" ("362 illustrative failure points"); the feature is called the "Pain-point library".
 - When a step's text equals its task name, show "Step N of 5: the task itself".
+
+## 11. Round 4 decision
+
+One term everywhere: **"failure points"**. The app view is "Failure points" and the library is the "Failure-point library"
+(internal ids and the `#view=pain` hash stay as they are so links keep working). Replace any user-facing "pain point(s)" or
+"Pain-point library" on every page.

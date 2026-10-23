@@ -3,9 +3,10 @@
    with no JS and no data. The only data the home page fetches is /data/summary.json (~37 KB).
    All scroll-linked work runs on the shared onFrame loop from ui.ts. */
 import "../styles/base.css";
+import "../styles/components.css";
 import "../styles/home.css";
 import { boot } from "../lib/site";
-import { onFrame, skinAt, initLocalNav, initGalleries, initTabs, initCounts, initLines, initInk } from "../lib/ui";
+import { onFrame, initLocalNav, initGalleries, initTabs, initCounts, initLines, initInk } from "../lib/ui";
 import { INDUSTRIES, COUNTRIES, CATEGORY_LABELS, type Industry, type Country, type Zone } from "../lib/data";
 import catalog from "../media-catalog.json";
 
@@ -103,38 +104,25 @@ function monolithFilm() {
 }
 
 /* =============================================================================================
-   One scroll-linked pass for the page, on the shared onFrame loop in two phases (all reads across the
-   page run before any writes):
-   - the local nav takes the skin (dark, light, navy) of the world beneath it, from ui.ts's cached map,
-     with the same rule the global header uses, so the two bars always agree
-   - gentle parallax on a few large stills
+   Gentle parallax on a few large stills, on the shared two-phase onFrame loop (all reads across the page
+   run before any writes). The local nav takes the skin beneath it through ui.ts (data-skin-follow), with
+   the same rule as the global header, so the two bars always agree.
    ============================================================================================= */
 function pageFrame() {
-  const lnav = $<HTMLElement>("[data-lnav]");
   const imgs = reduce ? [] : $$<HTMLImageElement>("img[data-parallax]");
-  const chrome: Element[] = lnav ? [lnav, ...$$(".site-nav")] : [];
-  let skin = lnav?.dataset.skin ?? "dark";
-  type Read = { next: string; moves: [HTMLImageElement, number][] };
+  if (!imgs.length) return;
+  type Move = [HTMLImageElement, number];
   onFrame({
-    read: (): Read => {
-      const vh = innerHeight;
-      let next = skin;
-      if (lnav) {
-        const b = lnav.getBoundingClientRect().bottom;
-        if (b > 0 && b < vh) next = skinAt(innerWidth / 2, b + 2, chrome);
-      }
-      const moves: [HTMLImageElement, number][] = [];
+    read: (): Move[] => {
+      const vh = innerHeight, moves: Move[] = [];
       for (const img of imgs) {
         const r = img.parentElement!.getBoundingClientRect();
         if (r.bottom < -100 || r.top > vh + 100) continue;
         moves.push([img, ((r.top + r.height / 2) - vh / 2) / vh]);
       }
-      return { next, moves };
+      return moves;
     },
-    write: ({ next, moves }: Read) => {
-      if (lnav && next !== skin) { skin = next; lnav.dataset.skin = next; }
-      for (const [img, off] of moves) img.style.transform = `translate3d(0, ${(off * -5).toFixed(2)}%, 0) scale(1.12)`;
-    },
+    write: (moves: Move[]) => { for (const [img, off] of moves) img.style.transform = `translate3d(0, ${(off * -5).toFixed(2)}%, 0) scale(1.12)`; },
   });
 }
 

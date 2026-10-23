@@ -8,8 +8,9 @@
   --r-tile: 28px;
   --pad-tile: clamp(24px, 3vw, 40px);
 }
-/* the local nav height lives on the root, where scroll-padding uses it, so focus and anchors clear both bars */
-html:has(body.home) { --lnav-h: 48px; scroll-padding-top: calc(var(--nav-h) + var(--lnav-h) + 16px); }
+/* home's local nav is a little shorter than the inner pages' (components.css); it lives on the root, where the
+   shared scroll-padding reads it, so focus and anchors clear both bars */
+html:has(body.home) { --lnav-h: 48px; }
 @media (max-width: 760px) { .home { --r-tile: 22px; } html:has(body.home) { --lnav-h: 46px; } }
 
 .home .sec { padding-block: clamp(88px, 11vw, 168px); }
@@ -19,27 +20,16 @@ html:has(body.home) { --lnav-h: 48px; scroll-padding-top: calc(var(--nav-h) + va
 .sec-head-split .t-lede { padding-bottom: 6px; }
 @media (max-width: 900px) { .sec-head-split { grid-template-columns: 1fr; } }
 
-/* ---------- shared atoms (same look as the inner pages) ---------- */
+/* ---------- home atoms (the shared components live in components.css) ---------- */
 .ctl-label { font: 500 var(--t-label)/1.3 var(--mono); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--fg-3); margin-bottom: 12px; }
-.sep { font-variant-numeric: proportional-nums; letter-spacing: -0.02em; }
 .ill-chip { display: inline-flex; align-items: center; padding: 3px 8px; border-radius: var(--radius-pill); border: 1px solid var(--line-2);
   font: 500 0.625rem/1.2 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--fg-2); white-space: nowrap; vertical-align: middle; }
-.paddle { width: 44px; height: 44px; border-radius: 50%; border: 0; display: inline-grid; place-items: center; color: var(--fg);
-  background: color-mix(in srgb, var(--fg) 10%, transparent); transition: background-color var(--dur-1), opacity var(--dur-1), transform var(--dur-1) var(--ease-out); }
-.paddle:hover:not(:disabled) { background: color-mix(in srgb, var(--fg) 17%, transparent); }
-.paddle:active:not(:disabled) { transform: scale(0.94); }
-.paddle:disabled { opacity: 0.36; cursor: default; }
 .paddle-sm { width: 36px; height: 36px; }
+/* home's paddles draw their chevrons in CSS */
 .chev { width: 9px; height: 9px; border-top: 2px solid currentColor; border-right: 2px solid currentColor; transform: translateX(-2px) rotate(45deg); border-radius: 1px; }
 .chev-l { transform: translateX(2px) rotate(-135deg); }
 .honest { display: flex; gap: 10px; align-items: baseline; margin-top: 18px; font-size: var(--t-small); line-height: 1.5; color: var(--fg-2); max-width: 34rem; }
 .honest-mark { flex: none; width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid var(--fg-3); transform: translateY(1px); }
-
-/* line reveals (ui.ts initLines): identical to the inner pages */
-.lines .ln { display: block; }
-.ln-armed .lines .ln { overflow: hidden; padding-bottom: 0.2em; margin-bottom: -0.2em; }
-.ln-armed .lines .ln > span { display: block; transform: translateY(108%); transition: transform 820ms var(--ease-out); transition-delay: calc(var(--li, 0) * 70ms); }
-.ln-armed .lines.in .ln > span { transform: none; }
 
 /* bridges: a gradient joins two worlds instead of a hard cut; the halves carry a skin for the header */
 /* short, with eased stops, so a light-to-dark join reads as a soft edge rather than a band of mid-grey */
@@ -169,36 +159,7 @@ html:has(body.home) { --lnav-h: 48px; scroll-padding-top: calc(var(--nav-h) + va
 }
 @media (max-height: 640px) and (min-width: 1024px) { .hb-qual { display: none; } }
 
-/* ---------- local nav (ui.ts initLocalNav): follows the header's tuck and takes the skin beneath it ---------- */
-.lnav { --ln-bg: #030e0b; --ln-fg: #eef3ef; --ln-fg-2: #b4c2bc; --ln-line: rgba(232, 240, 235, 0.1);
-  position: sticky; top: calc(var(--nav-h) + env(safe-area-inset-top, 0px)); z-index: 40; height: var(--lnav-h); color: var(--ln-fg);
-  background: color-mix(in srgb, var(--ln-bg) 82%, transparent); -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px);
-  border-bottom: 1px solid var(--ln-line); transition: top var(--dur-2) var(--ease-out), background-color var(--dur-2), color var(--dur-2), border-color var(--dur-2); }
-html:has(.site-nav.is-hidden) .lnav { top: 0; }
-.lnav[data-skin="light"] { --ln-bg: #eef2f3; --ln-fg: #0a1512; --ln-fg-2: #3f4e49; --ln-line: rgba(10, 21, 18, 0.1); }
-.lnav[data-skin="navy"] { --ln-bg: #0a1426; --ln-fg: #f1f0ea; --ln-fg-2: #c7cad3; --ln-line: rgba(241, 240, 234, 0.1); }
-.lnav-in { height: 100%; display: flex; align-items: center; gap: clamp(16px, 2.6vw, 36px); }
-.lnav-title { font-weight: 650; font-size: 1.0625rem; letter-spacing: -0.015em; margin-right: auto; white-space: nowrap; }
-.lnav-links { position: relative; display: flex; align-items: center; height: 100%; gap: clamp(18px, 2.4vw, 32px); font-size: 0.8125rem; }
-.lnav-links li { height: 100%; }
-.lnav-links a { display: inline-flex; align-items: center; height: 100%; color: var(--ln-fg-2); white-space: nowrap; transition: color var(--dur-1); }
-.lnav-links a:hover, .lnav-links a[aria-current] { color: var(--ln-fg); }
-.lnav-links a:focus-visible { outline-offset: -2px; }
-.lnav-ind { position: absolute; left: 0; bottom: -1px; height: 2px; width: var(--w, 0); transform: translateX(var(--x, 0)); background: var(--teal);
-  border-radius: 2px; opacity: var(--o, 0); transition: transform var(--dur-2) var(--ease-out), width var(--dur-2) var(--ease-out), opacity var(--dur-2); pointer-events: none; }
-.lnav-ind.instant { transition: none; }
-.lnav[data-skin="light"] .lnav-ind { background: #0a6a5c; }
-.lnav[data-skin="navy"] .lnav-ind { background: var(--brass); }
-.lnav .btn { flex: none; }
-.lnav[data-skin="light"] .lnav-cta { background: #0a1512; color: #eef3ef; }
-.lnav[data-skin="navy"] .lnav-cta { background: var(--brass); color: #0a1426; }
-@media (max-width: 760px) {
-  .lnav-title { display: none; }
-  .lnav-links { flex: 1; min-width: 0; overflow-x: auto; scrollbar-width: none; gap: 18px; justify-content: space-between; }
-  .lnav-links::-webkit-scrollbar { display: none; }
-  .lnav-links.overflows { justify-content: flex-start; -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 24px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 24px), transparent); }
-}
-@media (max-width: 560px) { .lnav .btn { display: none; } }
+/* local nav: components.css (skins, tuck, indicator, accent call to action); home only sets its height above */
 
 /* =============================================================================================
    2. HIGHLIGHTS BENTO
@@ -563,18 +524,8 @@ html:has(.site-nav.is-hidden) .lnav { top: 0; }
 
 .zmap { padding-top: clamp(48px, 7vw, 112px); }
 .home .zmap { padding-bottom: clamp(56px, 7vw, 112px); }
-.seg { position: relative; display: inline-flex; gap: 2px; padding: 4px; border-radius: var(--radius-pill); background: color-mix(in srgb, var(--fg) 8%, transparent);
-  max-width: 100%; overflow-x: auto; scrollbar-width: none; margin-bottom: 20px; }
-.seg::-webkit-scrollbar { display: none; }
-.seg [role="tab"] { position: relative; z-index: 1; flex: none; border: 0; background: transparent; color: var(--fg-2); min-height: 40px; padding: 8px 18px;
-  border-radius: var(--radius-pill); font-size: 0.9375rem; font-weight: 550; letter-spacing: -0.005em; white-space: nowrap; transition: color var(--dur-2) var(--ease-out); }
-.seg [role="tab"]:hover { color: var(--fg); }
-.seg [role="tab"][aria-selected="true"] { color: var(--bg); background: var(--fg); }
-.seg.has-pill [role="tab"][aria-selected="true"] { background: transparent; }
-.seg [role="tab"]:focus-visible { outline-offset: -2px; }
-.seg-pill { position: absolute; z-index: 0; top: 4px; bottom: 4px; left: 0; width: var(--w, 0); transform: translateX(var(--x, 0)); border-radius: var(--radius-pill);
-  background: var(--fg); transition: transform var(--dur-2) var(--ease-out), width var(--dur-2) var(--ease-out); }
-.seg-pill.instant { transition: none; }
+/* the process tabs are the shared segmented control (components.css); home only spaces them from the panel */
+.ztabs .seg { margin-bottom: 20px; }
 .zpanel { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 8fr); grid-template-rows: auto auto; gap: clamp(12px, 1.4vw, 20px); }
 .zp-media { grid-row: 1 / span 2; border-radius: var(--r-tile); min-height: 420px; }
 .zp-media img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transform: scale(1.04); transition: opacity 900ms var(--ease-io), transform 1400ms var(--ease-out); }
@@ -622,15 +573,8 @@ html:has(.site-nav.is-hidden) .lnav { top: 0; }
 .fns { overflow: hidden; }
 .fns-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; margin-bottom: clamp(32px, 4vw, 56px); }
 .fns-copy { display: grid; gap: 16px; max-width: 46rem; }
-.gal { position: relative; --g-pad: max(var(--gutter), calc((100% - var(--max)) / 2)); }
-/* proximity, not mandatory: keyboard focus never yanks a card half off-screen */
-.gal-track { position: relative; display: flex; gap: clamp(14px, 1.6vw, 20px); overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x proximity;
-  scrollbar-width: none; padding: 8px var(--g-pad) 18px; scroll-padding-inline: var(--g-pad); }
-.gal-track::-webkit-scrollbar { display: none; }
-.gal-track > li { flex: none; scroll-snap-align: start; }
+/* the gallery and its paddles are shared (components.css); home puts the paddles in a row beside a note */
 .gal-ctrl-row { display: flex; justify-content: space-between; align-items: center; gap: 20px; margin-top: 14px; }
-.gal-ctrl { display: flex; gap: 14px; flex: none; }
-.gal.no-scroll .gal-ctrl { display: none; }
 .fns-note { font-size: 0.8125rem; line-height: 1.5; color: var(--fg-3); max-width: 40rem; }
 
 .fn-card { width: clamp(280px, 23vw, 312px); height: 460px; display: flex; flex-direction: column; gap: 12px; padding: 26px; border-radius: var(--r-tile); background: var(--surface); color: var(--fg);
