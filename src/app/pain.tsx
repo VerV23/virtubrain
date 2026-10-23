@@ -6,7 +6,7 @@ import { useEffect, useRef } from "preact/hooks";
 import { SEVERITIES, PAIN_NOTE, CATEGORY_LABELS, categoryLabel, stepLabel, isWrapper, type PainPoint, type Severity } from "../lib/data";
 import { route, go, hrefFor, shareUrl, pain, taxIdx, loadData, say, stepIdOf, type SortKey } from "./state";
 import { compile, matches } from "./search";
-import { Icon, FnIcon, Hl, SevMark, Still, Empty, ErrorState, Skel, Impact, painTitle, painImpact, painWhere, talkHref, plural, copyText } from "./ui";
+import { Icon, FnIcon, Hl, SevMark, Still, Empty, ErrorState, Skel, Impact, painTitle, painImpact, painWhere, talkHref, talkLabel, plural, copyText } from "./ui";
 
 const hayOf = new WeakMap<PainPoint, string>();
 const hay = (p: PainPoint) => {
@@ -51,7 +51,7 @@ const clearAll = () => go({ pf: undefined, pc: undefined, sev: [], pq: "" }, { r
 
 export function PainView() {
   const pd = pain.value;
-  if (pd.state === "error") return <div class="pv pv-state"><ErrorState what="The pain-point library" onRetry={() => loadData({ focus: true })} /></div>;
+  if (pd.state === "error") return <div class="pv pv-state"><ErrorState what="The failure-point library" onRetry={() => loadData({ focus: true })} /></div>;
   const m = model.value;
   return (
     <div class="pv">
@@ -142,6 +142,15 @@ function Results() {
     const io = new IntersectionObserver(([e]) => { if (e.isIntersecting) limit.value += PAGE; }, { root: document.getElementById("pv-scroll"), rootMargin: "600px 0px" });
     io.observe(el); return () => io.disconnect();
   }, [limit.value, n]);
+  // End / Ctrl+End (or dragging to the bottom) must reach the last record: render everything first
+  useEffect(() => {
+    const sc = document.getElementById("pv-scroll"); if (!sc) return;
+    const all = () => { if (limit.value < n) limit.value = n; };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "End" && !(e.target as HTMLElement)?.closest?.("input, textarea, select")) all(); };
+    const onScroll = () => { if (sc.scrollTop + sc.clientHeight >= sc.scrollHeight - 4) all(); };
+    addEventListener("keydown", onKey, true); sc.addEventListener("scroll", onScroll, { passive: true });
+    return () => { removeEventListener("keydown", onKey, true); sc.removeEventListener("scroll", onScroll); };
+  }, [n]);
   const chips: { label: string; clear: () => void }[] = [];
   if (r.pq) chips.push({ label: `“${r.pq}”`, clear: () => go({ pq: "" }, { replace: true }) });
   for (const s of r.sev) chips.push({ label: s, clear: () => go({ sev: r.sev.filter((x) => x !== s) }, { replace: true }) });
@@ -154,7 +163,7 @@ function Results() {
       <header class="pv-head">
         <div class="pv-title-row">
           <div>
-            <h2 id="pv-h" class="pv-title" tabIndex={-1}>Pain-point library</h2>
+            <h2 id="pv-h" class="pv-title" tabIndex={-1}>Failure-point library</h2>
             <p class="pv-count" aria-live="polite" aria-atomic="true"><span class="num">{n}</span> of {m.all.length} illustrative failure points{nf ? " match" : ""}</p>
           </div>
           <div class="pv-tools">
@@ -232,7 +241,7 @@ function Record({ p, hl }: { p: PainPoint; hl: string[] }) {
       </div>
       <p class="rec-acts">
         <span class="rec-go" aria-hidden="true">{where.wrapper ? "Open task" : "Open step"}<Icon name="chevron" /></span>
-        <a class="rec-talk" href={talkHref(p)}><Icon name="mail" />Talk to us about this step</a>
+        <a class="rec-talk" href={talkHref(p)}><Icon name="mail" />{talkLabel(p)}</a>
       </p>
     </li>
   );

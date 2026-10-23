@@ -148,6 +148,15 @@ export const isWrapper = (step: string) => wrapperOf(step) !== null;
 export const WRAPPER_WHERE: Record<WrapperKind, string> = {
   start: "Where this task confirms its inputs", check: "Where this task's output is checked", gate: "Where this task decides whether it is complete", handoff: "At the handoff of this task",
 };
+/** A stage label is shown only when the failure point's category belongs at that stage; otherwise "In this task". */
+const STAGE_FITS: Record<WrapperKind, string[]> = {
+  start: ["data-quality"], check: ["data-quality", "control-gap"], gate: ["exception-volume", "rework-loop", "control-gap"], handoff: ["handoff-friction"],
+};
+export function whereInTask(step: string, category: string): string {
+  const w = wrapperOf(step);
+  if (!w) return "";
+  return STAGE_FITS[w.kind].includes(category) ? WRAPPER_WHERE[w.kind] : "In this task";
+}
 /** A step whose text is just its task's name is the "do the task" step of the standard pattern. */
 export const isTaskItself = (step: string, taskName: string) => step.trim().toLowerCase() === taskName.trim().toLowerCase();
 
@@ -194,8 +203,9 @@ const VERBS = new Set(("accept activate administer aggregate align allocate anal
   "triage trigger tune update validate verify write").split(" "));
 /** Verbs that can follow "and" later in a name; words that double as nouns here (record, report, plan...) are left out. */
 const LATER_VERBS = new Set(("approve assess allocate cleanse decide develop evaluate execute extend finalize identify integrate localize maintain manage " +
-  "negotiate onboard optimize prioritize quantify reconcile resolve specify submit triage tune validate recover protect adjust track conduct").split(" "));
-const DOUBLE = new Set(["commit", "log", "map", "plan", "run", "scan", "set", "submit", "transmit", "remit", "stop", "ship", "get", "put", "cut"]);
+  "negotiate onboard optimize prioritize quantify reconcile resolve specify submit triage tune validate recover protect adjust track conduct " +
+  "present process flag close update set hand monitor review publish communicate escalate document report").split(" "));
+const DOUBLE = new Set(["flag", "tag", "drop", "commit", "log", "map", "plan", "run", "scan", "set", "submit", "transmit", "remit", "stop", "ship", "get", "put", "cut"]);
 function ing(v: string): string {
   const low = v.toLowerCase();
   if (low === "putaway") return "putting away";
@@ -221,7 +231,10 @@ export function gerund(name: string): string {
   }
   if (!out.length) return m;
   // a second verb later in the name ("Analyze experiment results and decide rollout") follows suit
-  const rest = m.slice(consumed).replace(/(,? and )([a-z-]+)\b/g, (x, sep: string, w: string) => (LATER_VERBS.has(w) ? sep + ing(w) : x));
+  const rest = m.slice(consumed).replace(/(,? and )([a-z-]+(?:\/[a-z-]+)?)\b/g, (x, sep: string, w: string) => {
+    const halves = w.split("/");
+    return halves.every((h) => LATER_VERBS.has(h)) ? sep + halves.map(ing).join("/") : x;
+  });
   return out.join("") + rest;
 }
 
@@ -439,7 +452,7 @@ const STRUCTURAL: Rule[] = [
 const WHY_MONITOR = "Watches data against thresholds. An AI agent alerts and logs; a person acts on the alert.";
 const RULES: Rule[] = [
   // 2. the step names its actor
-  [/^(the )?(system|automated policy engine)\b|^approved entry auto-posts|auto-(matched|logged|posts|clear|classified)|\b(are|is) (archived|logged)\b|\bre-matched\b|\bsla clock\b/i, "auto", "The step says the system runs it by rule. The system log is the evidence.", "other", "system-run"],
+  [/^(the )?(system(?! or agent)|automated policy engine)\b|^approved entry auto-posts|auto-(matched|logged|posts|clear|classified)|\bre-matched\b|\bsla clock\b/i, "auto", "The step says the system runs it by rule. The system log is the evidence.", "other", "system-run"],
   [/^approver\b/i, "human", "An approval under delegated authority. A named person signs.", "accountable"],
   [/^(preparer|reviewer|the resolver)\b|^(\w+ )?manager reviews\b/i, "assist", "The step names a person checking an AI agent's draft. The agent drafts and the person confirms."],
   [/^agent (captures|records|updates)\b/i, "assist", "A service rep does this today. An AI agent can pre-fill it and the rep confirms."],
@@ -453,17 +466,18 @@ const RULES: Rule[] = [
   [/\b(approve|approves|approving|approvals?(?!\s+(workflow|guardrails|thresholds))|sign-?off|certify|certifies|close certification|ratify|ratifies)\b/i, "human", "An approval or sign-off. Accountability stays with a named person.", "accountable"],
   [/\bnegotiat(e|es|ing|ion)\b/i, "human", "A negotiation. Someone has to own the terms.", "accountable"],
   [/\b(disposition|write-?offs?|disposals?)\b/i, "human", "Deciding what happens to goods or assets, or writing them off, is a call someone answers for.", "accountable"],
-  [/\b(decide|go\/kill|funding decisions|evaluate and select|select(ion)? (and negotiate|suppliers?|new site)|select suppliers\/components|fund|critical incident|major escalation)\b/i, "human", "A call someone must own. AI agents can lay out the options.", "accountable"],
+  [/\b(decide|go\/kill|funding decisions|evaluate and select|select(ion)? (and negotiate|suppliers?|new site)|select suppliers\/components|fund|critical incident|major escalation|crisis tier)\b/i, "human", "A call someone must own. AI agents can lay out the options.", "accountable"],
   [/\b(performance reviews?|9-box|calibration sessions|exit interviews|interviews and assessments|management interviews|performance improvement plans?|termination|redundancy|reduction-in-force|restructuring|grievance|union|works council|outplacement|absence case|offer to the candidate)\b/i, "human", "A decision about a person. A manager owns it and AI agents prepare the facts.", "accountable"],
   [/\b(litigation|outside counsel|regulator inquiries|regulatory examinations|antitrust|lobbying|political contributions|ethics|conflicts of interest|violations|hotline|legal advisory|legally clear|patents|authority correspondence|tax audits?|authority audits?)\b/i, "human", "Legal or regulatory exposure. A named person answers for it.", "accountable"],
   [/\b(file|files|submit|submits)\b[^.]*\b(returns?|reports?|filings?|statutory|regulatory)\b/i, "human", "A statutory or regulatory filing. A named officer signs it and an AI agent prepares it.", "accountable"],
   [/\b(debt issuance|refinanc\w*|signator\w*|bank account structure|bank account changes?|hedge transactions|execute hedges?|dealing)\b/i, "human", "Commits the company's money or signing authority. A named officer decides.", "accountable"],
-  [/\b(earnings calls?|roadshows|investor conferences|town hall|journalist|media relationships|community stakeholder|present diligence findings|brief executive|strategy workshops|convene|crisis tier|disruption response|ahead of public release)\b/i, "human", "Speaks or acts for the company. A person fronts it and AI agents prepare.", "accountable"],
+  [/\b(earnings calls?|roadshows|investor conferences|town hall|journalist|media relationships|community stakeholder|present diligence findings|brief executive|strategy workshops|convene|disruption response|ahead of public release)\b/i, "human", "Speaks or acts for the company. A person fronts it and AI agents prepare.", "accountable"],
   [/^(set|define|establish)\b.*\b(strateg\w*|targets?(?!-)|appetite|tolerance|goals|okrs?|thesis|vision|ownership|oversight)\b/i, "human", "Sets direction or limits for others. Leadership owns it and AI agents model the options.", "accountable"],
   // 6. judgment the wording makes explicit
   [/\b(tax provision|deferred tax|reserves?|estimat\w*(?! tax installments)|impairment|fair value|valuation allowance|expected credit loss|bad debt|uncertain tax)\b/i, "assist", "An accounting estimate. An AI agent computes it from the rules and a person owns the judgment."],
+  [/\b(bank(ing)? details|bank account (details|changes?)|remit-to)\b/i, "assist", "Bank details are a fraud target. An AI agent checks them against the documents and a person confirms them by an independent call-back."],
   [/\b(payment runs?|release payments?|disburse|remit|wire transfers?)\b/i, "assist", "Money leaves the company. An AI agent prepares and checks the run, and a named approver releases it under dual control."],
-  [/\b(cctv|surveillance|shrink|fairness|bias)\b/i, "assist", "Watching it takes judgment: footage, exceptions or fairness. An AI agent flags what it sees and a person decides what it means."],
+  [/\b(cctv|surveillance (systems|footage)|shrink)\b|^(monitor|watch)\b.*\b(fairness|bias)\b/i, "assist", "Watching it takes judgment: footage, exceptions or fairness. An AI agent flags what it sees and a person decides what it means."],
   [/\bcredit (limits?|holds?)\b/i, "assist", "A credit decision. An AI agent scores the risk and a person sets the limit."],
   [/\bcovenant/i, "assist", "Covenant tests turn on definitions and waivers. An AI agent runs the numbers and a person signs off the result."],
   [/\b(legislation|rulemaking|laws?|regulatory changes?|laws\/regulations|sentiment|perception|(brand|market|competitive) positioning|(?<!cash )positioning|competitor\w*|competitive intelligence|product launches|brand health|threat intelligence|geopolitical)\b/i, "assist", "Reading it takes interpretation. An AI agent drafts or watches the sources and a person judges what matters."],
@@ -473,12 +487,14 @@ const RULES: Rule[] = [
   // 7. judgment verbs anywhere in the step (a step is sorted by its hardest part)
   [/\b(narrative|commentary|position papers)\b/i, "assist", "An AI agent can draft the words. A person checks they say what the numbers mean."],
   [/(^|, |\band )(draft|author|write(?!-off)|prepare|compile|produce|document|brief)\b|(, |\band )communicate\b/i, "assist", "An AI agent can draft it. A person checks the content before it is used."],
-  [/(^|, |\band )(analy[sz]e|assess|evaluate|investigate|identify|quantify|forecast|model|review|scan for|triage|diagnose|remediate|stress-test|validate concept|score and rank|segment|gather)\b|\bforecasting\b/i, "assist", "Analysis an AI agent can run. Reading the result takes judgment, so a person confirms it."],
+  [/(^|, |\band )(analy[sz]e|assess|evaluate|investigate|identify|quantify|forecast|model|review|scan for|triage|diagnose|remediate|stress-test|validate concept|score and rank|segment|gather)\b|\bforecast(ing)?\b|\bmodel risk\b/i, "assist", "Analysis an AI agent can run. Reading the result takes judgment, so a person confirms it."],
   [/(^|, |\band )(design|develop|build|plan|define|configure|implement|pilot|integrate|optimi[sz]e|localize|sequence roadmap|prioritize)\b|(, |\band )set\b|\b(visual identity|guidelines)\b/i, "assist", "Design work. An AI agent proposes and a person chooses."],
   // 8. watching against thresholds
   [/^(monitor|track)\b/i, "auto", WHY_MONITOR],
   // 9. transactions and automation cues
-  [/\b(preventive maintenance|work orders?)\b/i, "auto", "Scheduled from the maintenance or work-order system. Each order and completion is logged; people do the physical work."],
+  [/\b(are|is) (archived|filed|logged|posted|recorded)\b/i, "auto", "Filing evidence by rule. Each item lands in the record, so the record is the check."],
+  [/\bverif(y|ies) (customer )?identity\b/i, "auto", "Identity is checked against the account record, and each check is logged."],
+  [/\b(preventive maintenance|work orders?)\b/i, "auto", "Released from the planning, maintenance or work-order system. Each order and completion is logged; people do the physical work."],
   [/^(log|record|post|archive|preserve|sync|transmit|notify|distribute|publish|calculate|reconcile|match|capture|scan|collect|aggregate|extract|generate|issue|provision|release|convert|receive|tender|trigger|check|validate|screen|cleanse|refresh|roll up|schedule payments|sequence orders|apply incoming|run (baseline|depreciation|vulnerability|the automated|network)|restore|isolate|freeze|execute a canary|roll back|retest|set up test|score and route|enable the supplier|create and validate|apply distributed|process (checkout|recurring)|deploy models)\b/i, "auto", "A transaction or check with one right answer. It can be re-run and compared with the record."],
   [/\b(automated|automatically|auto-|system applies|ocr|via (e-invoicing|edi)|edi\/portal|three-way|two-way|matching|reconcil\w*|tolerance|routing rules|infrastructure-as-code|ci\/cd|ci pipeline|scanning|regression|smoke test|test cases|test suites?|depreciation|atp\/ctp|safety stock|reorder points|daily cash positioning|bank deposit|payslips|time capture)\b/i, "auto", "Rule-based work with a result that can be checked against the record."],
   // 10. ongoing operational work

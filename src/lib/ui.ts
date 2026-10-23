@@ -86,6 +86,7 @@ export function initLocalNav() {
   const list = nav.querySelector<HTMLElement>(".lnav-links")!;
   const links = [...list.querySelectorAll<HTMLAnchorElement>('a[href^="#"]')];
   const secs = links.map((a) => document.getElementById(decodeURIComponent(a.hash.slice(1))));
+  const gaps = [...document.querySelectorAll<HTMLElement>("[data-lnav-gap]")];
   const ind = document.createElement("span");
   ind.className = "lnav-ind instant";
   ind.setAttribute("aria-hidden", "true");
@@ -124,8 +125,10 @@ export function initLocalNav() {
     read: () => {
       const navBottom = nav.getBoundingClientRect().bottom;
       const line = navBottom + innerHeight * 0.22;
-      let i = -1;
-      secs.forEach((s, k) => { if (s && s.getBoundingClientRect().top <= line) i = k; });
+      // the latest section passed wins; a section marked data-lnav-gap (not in the bar) clears the highlight
+      let i = -1, best = -Infinity;
+      secs.forEach((s, k) => { const t = s?.getBoundingClientRect().top; if (t !== undefined && t <= line && t > best) { i = k; best = t; } });
+      gaps.forEach((g) => { const t = g.getBoundingClientRect().top; if (t <= line && t > best) { i = -1; best = t; } });
       // past the end of the last section (CTA, footer): keep the last item lit only while it is on screen
       const last = secs[secs.length - 1];
       if (i === secs.length - 1 && last && last.getBoundingClientRect().bottom < navBottom) i = -1;

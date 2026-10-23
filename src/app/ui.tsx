@@ -3,7 +3,7 @@ import type { ComponentChildren, JSX } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { STILLS, srcset, bestSrc } from "../lib/media";
 import { splitMatches } from "./search";
-import { humanizeTitle, humanizeImpact, wrapperOf, isTaskItself, WRAPPER_WHERE, IMPACT_PREFIX, type Severity, type Zone, type PainPoint } from "../lib/data";
+import { humanizeTitle, humanizeImpact, wrapperOf, isTaskItself, whereInTask, IMPACT_PREFIX, type Severity, type Zone, type PainPoint } from "../lib/data";
 import { taxIdx } from "./state";
 
 /* ---- Icons: 16px line glyphs drawn on a 16 grid, stroke = currentColor ---------------------- */
@@ -56,7 +56,7 @@ export function painImpact(p: PainPoint) {
 /** Where a point sits: its exact step for core steps, task level for the standard steps. */
 export function painWhere(p: PainPoint): { wrapper: boolean; itself: boolean; text: string } {
   const w = wrapperOf(p.stepText);
-  if (w) return { wrapper: true, itself: false, text: `${WRAPPER_WHERE[w.kind]} (standard step)` };
+  if (w) return { wrapper: true, itself: false, text: `${whereInTask(p.stepText, p.category)} (standard step)` };
   if (isTaskItself(p.stepText, p.taskName)) {
     const proc = taxIdx.value?.resolve(p.processId, p.functionId)?.proc;
     const n = proc?.activities.flatMap((a) => a.tasks).find((t) => t.id === p.taskId)?.steps.length || 5;
@@ -67,7 +67,18 @@ export function painWhere(p: PainPoint): { wrapper: boolean; itself: boolean; te
 export const Impact = ({ p, hl = [] }: { p: PainPoint; hl?: string[] }) => (
   <p class="impact"><span class="impact-pre">{IMPACT_PREFIX}</span> <Hl text={painImpact(p)} hl={hl} /></p>
 );
-export const talkHref = (p: { processId: string; functionId: string }) => `/contact/?process=${encodeURIComponent(p.processId)}&fn=${encodeURIComponent(p.functionId)}`;
+/** Contact link for a process, or for one failure point: then it carries the step (or task) and the title. */
+export function talkHref(p: { processId: string; functionId: string; taskId?: string; stepIndex?: number; stepText?: string; title?: string; taskName?: string }) {
+  let href = `/contact/?process=${encodeURIComponent(p.processId)}&fn=${encodeURIComponent(p.functionId)}`;
+  if (p.taskId && p.stepText !== undefined) {
+    const onTask = !!wrapperOf(p.stepText);
+    href += `&step=${encodeURIComponent(onTask ? p.taskId : `${p.taskId}.${(p.stepIndex ?? 0) + 1}`)}`;
+    if (p.title) href += `&about=${encodeURIComponent(humanizeTitle(p.title, p.taskName || "").slice(0, 160))}`;
+  }
+  return href;
+}
+/** "Talk to us about this step" for core steps, "this task" for points on the standard steps. */
+export const talkLabel = (p: { stepText: string }) => `Talk to us about this ${wrapperOf(p.stepText) ? "task" : "step"}`;
 
 export function Still({ name, sizes = "320px", class: cls = "", alt }: { name: string; sizes?: string; class?: string; alt?: string }) {
   const s = STILLS[name];

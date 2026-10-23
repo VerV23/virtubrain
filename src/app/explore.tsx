@@ -5,12 +5,12 @@ import { signal, computed } from "@preact/signals";
 import { useEffect, useLayoutEffect, useRef } from "preact/hooks";
 import {
   INDUSTRIES, COUNTRIES, SEVERITIES, PAIN_NOTE, ZONES, zoneOf, gatewayOf, stepKey, taskKey, categoryLabel, wrapperOf, isWrapper,
-  stepLabel, isTemplatedIO, humanizeIO, WRAPPER_WHERE, isTaskItself, displayDescription,
+  stepLabel, isTemplatedIO, humanizeIO, WRAPPER_WHERE, whereInTask, isTaskItself, displayDescription,
   type ProcRef, type PainPoint, type Task, type Industry, type Country,
 } from "../lib/data";
 import { route, go, goBack, hrefFor, shareUrl, tax, pain, taxIdx, painIdx, currentProc, currentFnId, loadData, say, stepIdOf, parseStepId, keyOf, pref, type DetailTab } from "./state";
 import { searchProcs, type Hit } from "./search";
-import { Icon, FnIcon, Hl, SevMark, ZoneMark, Empty, ErrorState, Skel, Ill, Impact, painTitle, painWhere, talkHref, plural, copyText, reduceMotion } from "./ui";
+import { Icon, FnIcon, Hl, SevMark, ZoneMark, Empty, ErrorState, Skel, Ill, Impact, painTitle, painWhere, talkHref, talkLabel, plural, copyText, reduceMotion } from "./ui";
 import { Seg } from "./controls";
 import { focusXrayStep } from "./xray";
 
@@ -251,7 +251,7 @@ function ProcList() {
 }
 
 /* ---- detail ------------------------------------------------------------------------------------ */
-const TAB_LABEL: Record<DetailTab, [string, string]> = { steps: ["Breakdown", "Breakdown"], lens: ["Industry and country", "Lens"], kpis: ["Systems and KPIs", "KPIs"], pain: ["Pain points", "Pain points"] };
+const TAB_LABEL: Record<DetailTab, [string, string]> = { steps: ["Breakdown", "Breakdown"], lens: ["Industry and country", "Lens"], kpis: ["Systems and KPIs", "KPIs"], pain: ["Failure points", "Failure points"] };
 
 function Detail() {
   const ref = currentProc.value; const r = route.value;
@@ -445,7 +445,7 @@ function PainTab({ pr }: { pr: ProcRef }) {
                 <p class="pp-where"><span class="code">{where.wrapper ? p.taskId : sid}</span>{where.wrapper ? <> Task: {p.taskName}. {where.text}</> : <> {where.text}: {stepLabel(p.stepText, p.taskName)}</>}</p>
                 <p class="pp-acts">
                   <a class="b b-ghost b-sm" href={hrefFor({ s: sid, tab: "steps" })} onClick={(e) => { e.preventDefault(); go({ s: sid, tab: "steps" }, { replace: true }); }}>{where.wrapper ? "Go to task" : "Go to step"}</a>
-                  <a class="b b-quiet b-sm" href={talkHref(p)}><Icon name="mail" />Talk to us about this step</a>
+                  <a class="b b-quiet b-sm" href={talkHref(p)}><Icon name="mail" />{talkLabel(p)}</a>
                 </p>
               </li>
             );
@@ -469,7 +469,7 @@ function Breakdown({ pr }: { pr: ProcRef }) {
           <h3 id="flow-h" class="h-md">Breakdown to the step</h3>
           <p class="d-sec-sub">
             {proc.hasStepDetail ? "A flagship process: one task carries curated steps. " : ""}
-            {nWrap ? `Tasks follow a standard five-step pattern: confirm the inputs, do the task, check the output, decide whether it is complete, then log and hand off. ${nWrap} of the ${pr.stepCount} steps are those standard steps, and an engagement replaces them with your own.` : "Every step here is curated."}
+            {nWrap ? `${proc.hasStepDetail ? "The other tasks" : "Tasks"} follow a standard five-step pattern: confirm the inputs, do the task, check the output, decide whether it is complete, then log and hand off. ${nWrap} of the ${pr.stepCount} steps are those standard steps, and an engagement replaces them with your own.` : "Every step here is curated."}
           </p>
         </div>
       </div>
@@ -568,7 +568,7 @@ function FlowTask({ t, pr }: { t: Task; pr: ProcRef }) {
         <div id={`steps-${t.id}`}>
           {taskPins.length > 0 && (
             <div class="task-pins">
-              {taskPins.map((p) => { const w = wrapperOf(p.stepText); return <Pin key={p.id} p={p} where={w ? WRAPPER_WHERE[w.kind] : ""} />; })}
+              {taskPins.map((p) => <Pin key={p.id} p={p} where={whereInTask(p.stepText, p.category)} />)}
             </div>
           )}
           <ol class="fl-steps">
@@ -625,7 +625,7 @@ function Pin({ p, where }: { p: PainPoint; where?: string }) {
       <p class="pin-meta"><SevMark sev={p.severity} /><span class="pin-cat">{categoryLabel(p.category, p.categoryLabel)}</span>{where && <span class="pin-where">{where}</span>}</p>
       <p class="pin-title">{painTitle(p)}</p>
       <Impact p={p} />
-      <p class="pin-acts"><a href={talkHref(p)}>Talk to us about this step</a></p>
+      <p class="pin-acts"><a href={talkHref(p)}>{talkLabel(p)}</a></p>
     </div>
   );
 }

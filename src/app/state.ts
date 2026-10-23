@@ -23,7 +23,7 @@ export interface Route {
 }
 export const VIEWS: { id: View; label: string; key: string }[] = [
   { id: "explore", label: "Explore", key: "e" },
-  { id: "pain", label: "Pain points", key: "p" },
+  { id: "pain", label: "Failure points", key: "p" },
   { id: "xray", label: "X-ray", key: "x" },
 ];
 export const DEFAULT_FN = "finance-accounting";

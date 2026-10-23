@@ -82,6 +82,10 @@ if (form) {
   setMode(fInterest.selectedOptions[0]?.dataset.key === "assistant" ? "assistant" : "process", false);
   const pid = params.get("process")?.trim();
   const pfn = params.get("fn")?.trim() || "";
+  // a single failure point can travel with the process: ?step=8.1.1.2.2.7 (or a task id) and ?about=<its title>
+  const pstep = (params.get("step") || "").trim();
+  const step = /^[\w.-]{1,32}$/.test(pstep) ? pstep : "";
+  const about = (params.get("about") || "").replace(/\s+/g, " ").trim().slice(0, 160);
   let prefilled = "";
   if (pid && /^[\w.-]{1,24}$/.test(pid)) prefillProcess(pid, pfn);
 
@@ -111,7 +115,10 @@ if (form) {
       pickInterest(key);
       syncMode();
     }
-    prefilled = `We'd like to talk about ${label}.`;
+    const kind = step && step.split(".").length > (found?.id.split(".").length ?? 3) + 2 ? "step" : "task";
+    prefilled = step
+      ? `We'd like to talk about ${kind} ${step}${about ? ` (${about})` : ""} in ${label}.`
+      : `We'd like to talk about ${label}.`;
     if (!fMessage.value.trim()) fMessage.value = prefilled;
   }
 
@@ -124,7 +131,7 @@ if (form) {
     const fnl = Object.assign(document.createElement("span"), { className: "chip-fn", textContent: `(${p.fnName})` });
     const open = Object.assign(document.createElement("a"), {
       className: "link-more", textContent: "Open in the app",
-      href: `/app/#view=explore&fn=${encodeURIComponent(p.fn)}&p=${encodeURIComponent(p.id)}`,
+      href: `/app/#view=explore&fn=${encodeURIComponent(p.fn)}&p=${encodeURIComponent(p.id)}${step ? `&s=${encodeURIComponent(step)}` : ""}`,
     });
     const x = Object.assign(document.createElement("button"), { type: "button", className: "x", textContent: "Remove" });
     x.setAttribute("aria-label", `Remove process ${p.id} from the message`);
@@ -137,6 +144,11 @@ if (form) {
     const text = document.createElement("span");
     text.className = "chip-text";
     text.append(lead, " ", code, " ", name, " ", fnl);
+    if (step) {
+      const st = Object.assign(document.createElement("span"), { className: "chip-step" });
+      st.append(" · ", Object.assign(document.createElement("span"), { className: "code", textContent: step }), about ? ` ${about}` : "");
+      text.append(st);
+    }
     chip.append(text, open, x);
     chip.hidden = false;
   }

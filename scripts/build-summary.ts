@@ -96,11 +96,13 @@ const slim = (p: PainPoint): Rec => ({ id: p.id, fn: p.functionId, fnName: p.fun
 const cats = Object.keys(CATEGORY_LABELS).sort((a, b) => (P.meta.byCategory[b] ?? 0) - (P.meta.byCategory[a] ?? 0));
 const records: Record<string, Rec[]> = {};
 for (const cat of cats) {
-  // spread across functions: the most severe record from each function first, then the rest
+  // finance and procurement first (the buyer this card has to convince), most severe first, then the rest spread across functions
+  const pref = (p: PainPoint) => (p.functionId === "finance-accounting" ? 0 : p.functionId === "procurement" ? 1 : 2);
   const all = P.painPoints.filter((p) => p.category === cat).sort((a, b) => sevRank(a.severity) - sevRank(b.severity));
-  const seen = new Set<string>(); const first: PainPoint[] = []; const rest: PainPoint[] = [];
-  for (const p of all) (seen.has(p.functionId) ? rest : (seen.add(p.functionId), first)).push(p);
-  let pick = [...first, ...rest].sort((a, b) => sevRank(a.severity) - sevRank(b.severity)).slice(0, PER_CAT);
+  const fin = all.filter((p) => pref(p) < 2).sort((a, b) => sevRank(a.severity) - sevRank(b.severity) || pref(a) - pref(b)).slice(0, 3);
+  const seen = new Set<string>(fin.map((p) => p.functionId)); const first: PainPoint[] = []; const rest: PainPoint[] = [];
+  for (const p of all) if (!fin.includes(p)) (seen.has(p.functionId) ? rest : (seen.add(p.functionId), first)).push(p);
+  let pick = [...fin, ...[...first, ...rest].sort((a, b) => sevRank(a.severity) - sevRank(b.severity))].slice(0, PER_CAT);
   const feat = P.painPoints.find((p) => p.id === FEATURED)!;
   if (feat.category === cat) pick = [feat, ...pick.filter((p) => p.id !== FEATURED)].slice(0, PER_CAT);
   records[cat] = pick.map(slim);

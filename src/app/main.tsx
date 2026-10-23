@@ -34,7 +34,7 @@ function App() {
   const ref = currentProc.value;
   useEffect(() => {
     const v = VIEWS.find((x) => x.id === r.view)!.label;
-    document.title = r.view === "pain" ? "Pain-point library · VirtuBrain" : ref ? `${ref.proc.id} ${ref.proc.name} · ${v} · VirtuBrain` : `${v} · VirtuBrain`;
+    document.title = r.view === "pain" ? "Failure-point library · VirtuBrain" : ref ? `${ref.proc.id} ${ref.proc.name} · ${v} · VirtuBrain` : `${v} · VirtuBrain`;
   }, [r.view, ref]);
 
   return (
@@ -71,7 +71,7 @@ function Intro() {
     <aside class="intro" aria-label="How the app works">
       <ul class="intro-list">
         <li><b>Explore</b> Open any of 142 processes and read it for your industry and country, down to its tasks and steps.</li>
-        <li><b>Pain points</b> Browse 362 illustrative failure points, each tied to the task or step where it shows up.</li>
+        <li><b>Failure points</b> Browse 362 illustrative failure points, each tied to the task or step where it shows up.</li>
         <li><b>X-ray</b> Sort a process's steps by who should run them: an AI agent, an AI agent with a person approving, or people.</li>
       </ul>
       <p class="intro-short">Explore 142 processes, browse 362 illustrative failure points, or X-ray a process to sort its steps by who should run them.</p>
@@ -226,7 +226,7 @@ function Toast() {
 function Shortcuts({ dlg }: { dlg: { current: HTMLDialogElement | null } }) {
   const rows: [string[], string][] = [
     [["/"], "Search"], [["↑", "↓"], "Move through the process list"], [["Enter"], "Open the highlighted process"], [["Esc"], "Clear the search"],
-    [["E"], "Explore"], [["P"], "Pain points"], [["X"], "X-ray"],
+    [["E"], "Explore"], [["P"], "Failure points"], [["X"], "X-ray"],
     [["←", "→"], "X-ray: move the selected step to the next zone"], [["A", "S", "H"], "X-ray: send the selected step to Auto, Assist or Human"], [["R"], "X-ray: put a moved step back"],
     [["?"], "Show these shortcuts"],
   ];

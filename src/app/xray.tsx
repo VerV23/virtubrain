@@ -241,11 +241,15 @@ function ZStat({ z, n, share, pains }: { z: Zone; n: number; share: number; pain
 function StartHere() {
   const steps = xsteps.value; const failed = painFailed();
   const autos = steps.filter((s) => !s.std && zoneFor(s) === "auto");
-  const systemRun = autos.filter((s) => s.call.rule === "system-run" && !route.value.z[s.sid]);
+  // a step that carries an automation-gap failure point is never "already system-run": the record says it is still manual
+  const gap = (s: XStep) => s.pins.some((p) => p.category === "automation-gap");
+  const systemRun = autos.filter((s) => s.call.rule === "system-run" && !route.value.z[s.sid] && !gap(s));
   const picks = autos.filter((s) => !systemRun.includes(s))
-    .sort((a, b) => sevRank(a.pins) - sevRank(b.pins) || sevRank(a.taskPins) - sevRank(b.taskPins) || a.n - b.n).slice(0, 5);
+    .sort((a, b) => Number(gap(b)) - Number(gap(a)) || sevRank(a.pins) - sevRank(b.pins) || sevRank(a.taskPins) - sevRank(b.taskPins) || a.n - b.n).slice(0, 5);
   const bare = picks.filter((s) => !s.pins.length && !s.taskPins.length).length;
   const reason = (s: XStep) => {
+    const g = s.pins.find((p) => p.category === "automation-gap");
+    if (g) return { sev: g.severity, text: `${g.severity} failure point: this step is still done by hand` };
     if (s.pins[0]) return { sev: s.pins[0].severity, text: `${s.pins[0].severity} failure point at this step` };
     if (s.taskPins[0]) { const w = wrapperOf(s.taskPins[0].stepText); return { sev: s.taskPins[0].severity, text: `${s.taskPins[0].severity} failure point ${(w ? WRAPPER_WHERE[w.kind] : "in this task").replace(/^\w/, (c) => c.toLowerCase())}` }; }
     return null;
