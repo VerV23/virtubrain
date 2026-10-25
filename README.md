@@ -65,3 +65,12 @@ All stills and films come from the client's own Higgsfield generations. To repro
 - Confirm the founder line about Accenture and who staffs engagements.
 - Confirm the data-handling and pricing FAQ answers on /enterprise/.
 - Test a real form submission on the production host.
+
+## Known follow-ups (not launch blockers)
+
+- Films fill about 1,350px of a 1920px screen because the source clips are 1284px wide. Upscaling the lanes and monolith
+  clips (Higgsfield `upscale_video`), re-exporting the desktop frames at 1920px and raising the size cap would fill it.
+- Some component classes (`rec*`, `zbar`, `sevbar`, `chips`, `kpis`, `code`, `badge`, `fn-ico`, `note`, `tick`, `copy-btn`,
+  `chev`) are styled separately in `home.css` and `app.css`; they could move into `components.css` with modifiers.
+- On a mid-range phone (4x CPU throttle) the switch into the X-ray view takes about 200 ms; rendering its lanes in idle
+  chunks would bring it lower.
