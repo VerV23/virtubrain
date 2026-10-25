@@ -487,7 +487,7 @@ html:has(body.home) { --lnav-h: 48px; }
 .lanes-film .film-shade { background: linear-gradient(to bottom, var(--bg) 0, color-mix(in srgb, var(--bg) 70%, transparent) 14%, color-mix(in srgb, var(--bg) 0%, transparent) 40%),
   linear-gradient(to top, var(--bg) 0, transparent 14%); }
 /* a left scrim under the headlines while the tiles fly; it lifts once the lanes have formed */
-.lanes-film .film-shade::before { content: ""; position: absolute; inset: 0;
+.lanes-film .film-shade::before { content: ""; position: absolute; inset: 0; --p: inherit; /* --p does not inherit on its own */
   background: linear-gradient(90deg, var(--bg) 0, color-mix(in srgb, var(--bg) 88%, transparent) 30%, color-mix(in srgb, var(--bg) 40%, transparent) 50%, transparent 66%);
   opacity: clamp(0, calc((0.72 - var(--p, 0)) * 14), 1); }
 .lanes-film .fb { width: min(100%, calc(46rem + 2 * var(--gutter))); }

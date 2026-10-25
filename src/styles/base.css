@@ -83,6 +83,11 @@ button { cursor: pointer; }
 
 /* scroll-scrubbed film ------------------------------------------------------------ */
 .film { position: relative; height: var(--film-h, 400vh); }
+/* Film progress (--p) and beat opacity (--o) change on every scrub frame. Registered as non-inherited, a write
+   restyles only the element it lands on, not its subtree; film.ts writes --p straight to each [data-p] reader. */
+@property --p { syntax: "<number>"; inherits: false; initial-value: 0; }
+@property --o { syntax: "<number>"; inherits: false; initial-value: 0; }
+
 .film-stage { position: sticky; top: 0; height: 100vh; height: 100svh; overflow: hidden; background: var(--bg); }
 .film-canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 .film-poster { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
